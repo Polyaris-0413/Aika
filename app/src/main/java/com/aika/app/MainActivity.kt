@@ -49,8 +49,10 @@ import com.aika.app.ui.theme.AikaTheme
 import com.aika.app.ui.theme.AnimationTokens
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
+/** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
+private const val CompletedHeaderKey = "completed-header"
+
+class MainActivity : ComponentActivity() {    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -82,6 +84,14 @@ fun TodoScreen() {
     ) { innerPadding ->
         val pendingTasks = tasks.filter { !it.completed }
         val doneTasks = tasks.filter { it.completed }
+        // 标题以 null 占位插入交界处,三个 items 块并成单一块:
+        // 任务跨区移动才能被识别为同块内 key 移动(组合复用,涟漪与滑动动画连续),
+        // 否则组合销毁重建,涟漪状态随旧组合销毁而中断
+        val displayItems = if (doneTasks.isEmpty()) {
+            pendingTasks
+        } else {
+            pendingTasks + listOf<Task?>(null) + doneTasks
+        }
 
         LazyColumn(
             modifier = Modifier
@@ -90,22 +100,8 @@ fun TodoScreen() {
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(groupItemSpacing)
         ) {
-            itemsIndexed(pendingTasks, key = { _, task -> task.id }) { index, task ->
-                TaskRow(
-                    task = task,
-                    positionInGroup = index,
-                    groupCount = pendingTasks.size,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = tween(AnimationTokens.Large),
-                        placementSpec = tween(AnimationTokens.Medium)
-                    ),
-                    onToggle = { scope.launch { repository.toggleTask(task) } }
-                )
-            }
-            // 固定 key 的独立标题项:恢复任务时位置不变则纹丝不动,变化时平滑滑动,
-            // 出现/消失由 animateItem 的淡入淡出兜底——避免标题随项"消失又重现"的瞬移感
-            if (doneTasks.isNotEmpty()) {
-                item(key = "completed-header") {
+            itemsIndexed(displayItems, key = { _, item -> item?.id ?: CompletedHeaderKey }) { index, item ->
+                if (item == null) {
                     Text(
                         text = stringResource(R.string.group_completed),
                         style = MaterialTheme.typography.labelLarge,
@@ -118,19 +114,18 @@ fun TodoScreen() {
                                 fadeOutSpec = tween(AnimationTokens.Medium)
                             )
                     )
+                } else {
+                    TaskRow(
+                        task = item,
+                        positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
+                        groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = tween(AnimationTokens.Large),
+                            placementSpec = tween(AnimationTokens.Medium)
+                        ),
+                        onToggle = { scope.launch { repository.toggleTask(item) } }
+                    )
                 }
-            }
-            itemsIndexed(doneTasks, key = { _, task -> task.id }) { index, task ->
-                TaskRow(
-                    task = task,
-                    positionInGroup = index,
-                    groupCount = doneTasks.size,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = tween(AnimationTokens.Large),
-                        placementSpec = tween(AnimationTokens.Medium)
-                    ),
-                    onToggle = { scope.launch { repository.toggleTask(task) } }
-                )
             }
         }
     }
