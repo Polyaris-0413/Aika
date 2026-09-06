@@ -43,7 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.aika.app.ui.components.groupItemShape
+import com.aika.app.ui.components.animatedGroupItemShape
 import com.aika.app.ui.components.groupItemSpacing
 import com.aika.app.ui.components.groupTitleSpacing
 import com.aika.app.ui.components.listItemColors
@@ -157,7 +157,13 @@ fun TodoScreen() {
                         },
                         colors = listItemColors(),
                         modifier = Modifier
-                            .clip(groupItemShape(positionInGroup, groupCount))
+                            .clip(
+                                animatedGroupItemShape(
+                                    positionInGroup,
+                                    groupCount,
+                                    tween(AnimationTokens.Medium)
+                                )
+                            )
                             .clickable { toggleTask(task) }
                     )
                 }

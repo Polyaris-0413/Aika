@@ -1,10 +1,13 @@
 package com.aika.app.ui.components
 
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,49 +40,38 @@ fun listItemColors(): ListItemColors {
     return ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
 }
 
-/** 组内第一个 item:顶部大圆角,底部小圆角(与下一项贴合) */
-fun leadingItemShape(
-    topRadius: Int = END_CORNER_RADIUS,
-    bottomRadius: Int = CONNECTED_CORNER_RADIUS,
-): Shape =
-    RoundedCornerShape(
-        topStart = topRadius.dp,
-        topEnd = topRadius.dp,
-        bottomEnd = bottomRadius.dp,
-        bottomStart = bottomRadius.dp,
-    )
+/** 四角半径,顺序与 RoundedCornerShape 一致:topStart / topEnd / bottomEnd / bottomStart */
+private data class CornerRadii(
+    val topStart: Dp,
+    val topEnd: Dp,
+    val bottomEnd: Dp,
+    val bottomStart: Dp,
+)
 
-/** 组内中间 item:全小圆角 */
-fun middleItemShape(radius: Int = CONNECTED_CORNER_RADIUS): Shape =
-    RoundedCornerShape(
-        topStart = radius.dp,
-        topEnd = radius.dp,
-        bottomStart = radius.dp,
-        bottomEnd = radius.dp,
-    )
+/** 组内位置对应的四角半径:首项上大下小、中间全小、末项上小下大、单项全大——形状规则单一来源 */
+private fun groupItemCornerRadii(index: Int, count: Int): CornerRadii = when {
+    count <= 1 -> CornerRadii(END, END, END, END)
+    index == 0 -> CornerRadii(END, END, CONNECTED, CONNECTED)
+    index == count - 1 -> CornerRadii(CONNECTED, CONNECTED, END, END)
+    else -> CornerRadii(CONNECTED, CONNECTED, CONNECTED, CONNECTED)
+}
 
-/** 组内最后一个 item:顶部小圆角,底部大圆角 */
-fun endItemShape(
-    topRadius: Int = CONNECTED_CORNER_RADIUS,
-    bottomRadius: Int = END_CORNER_RADIUS,
-): Shape =
-    RoundedCornerShape(
-        topStart = topRadius.dp,
-        topEnd = topRadius.dp,
-        bottomEnd = bottomRadius.dp,
-        bottomStart = bottomRadius.dp,
-    )
+private val END = END_CORNER_RADIUS.dp
+private val CONNECTED = CONNECTED_CORNER_RADIUS.dp
 
-/** 单独一个 item(整组只有一项):全大圆角 */
-fun detachedItemShape(radius: Int = END_CORNER_RADIUS): Shape = RoundedCornerShape(radius.dp)
+/** 按组内位置选拼接形状(无过渡,适合形状不变的静态组) */
+fun groupItemShape(index: Int, count: Int): Shape {
+    val radii = groupItemCornerRadii(index, count)
+    return RoundedCornerShape(radii.topStart, radii.topEnd, radii.bottomEnd, radii.bottomStart)
+}
 
-/**
- * 按组内位置选拼接形状:首项上大下小、中间全小、末项上小下大、单项全大。
- * 组的形状规则单一来源——新增组/加项只需按 index/count 调用,无需手写各位置形状。
- */
-fun groupItemShape(index: Int, count: Int): Shape = when {
-    count <= 1 -> detachedItemShape()
-    index == 0 -> leadingItemShape()
-    index == count - 1 -> endItemShape()
-    else -> middleItemShape()
+/** 按组内位置选拼接形状,四角半径随目标位置平滑过渡(适合会跨组移动的 item) */
+@Composable
+fun animatedGroupItemShape(index: Int, count: Int, spec: FiniteAnimationSpec<Dp>): Shape {
+    val target = groupItemCornerRadii(index, count)
+    val topStart by animateDpAsState(target.topStart, spec, label = "groupTopStart")
+    val topEnd by animateDpAsState(target.topEnd, spec, label = "groupTopEnd")
+    val bottomEnd by animateDpAsState(target.bottomEnd, spec, label = "groupBottomEnd")
+    val bottomStart by animateDpAsState(target.bottomStart, spec, label = "groupBottomStart")
+    return RoundedCornerShape(topStart, topEnd, bottomEnd, bottomStart)
 }
