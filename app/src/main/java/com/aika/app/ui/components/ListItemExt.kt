@@ -28,6 +28,9 @@ private const val END_CORNER_RADIUS = 12
 /** 拼接组内 item 的间距(圆角贴合处的缝隙) */
 val groupItemSpacing: Dp = 2.dp
 
+/** 分组标题与卡片组的间距(M3 间距基线 8dp) */
+val groupTitleSpacing: Dp = 8.dp
+
 /** 分组卡片底色:surfaceContainerHigh,比默认 ListItem 的 surfaceContainerLow 更突出 */
 @Composable
 fun listItemColors(): ListItemColors {
