@@ -11,16 +11,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
 import com.materialkolor.scheme.DynamicScheme
-import com.materialkolor.scheme.SchemeTonalSpot
+import com.materialkolor.scheme.SchemeContent
 
 /**
  * 由种子色经 HCT 算法公式生成整套 M3 配色方案(与 Folio 同算法)。
- * TonalSpot 变体(Material You 官方默认):primary 彩度鲜明,
- * 背景/表面保持近中性——曾试 Neutral 变体,primary 彩度过低整体发灰。
+ * Content 变体:尽量保真种子色的彩度与色相,主题色最接近所选种子本身
+ * (曾试 Neutral 整体发灰、TonalSpot 彩度中等偏素)。
  */
 fun aikaColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme =
     toColorScheme(
-        SchemeTonalSpot(
+        SchemeContent(
             sourceColorHct = Hct.fromInt(seedColor.toArgb()),
             isDark = darkTheme,
             contrastLevel = 0.0,
