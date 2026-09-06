@@ -13,26 +13,19 @@ import com.materialkolor.hct.Hct
 import com.materialkolor.scheme.DynamicScheme
 import com.materialkolor.scheme.SchemeContent
 
-/** 种子彩度收敛档:Content 保真原生彩度过艳(蓝 68.9 → #0042c7),收敛后观感已验证 */
-private const val SEED_CHROMA = 54.0
-
 /**
  * 由种子色经 HCT 算法公式生成整套 M3 配色方案(与 Folio 同算法)。
- * Content 变体保真种子彩度,故先把种子彩度显式收敛到固定档(保真色相与明度),
- * 主题色浓淡与种子 hex 的原生彩度解耦,只由 SEED_CHROMA 一个数值控制。
+ * Content 变体保真种子色的彩度与色相,主题色直接由种子 hex 决定。
  */
-fun aikaColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme {
-    val source = Hct.fromInt(seedColor.toArgb())
-    val seed = Hct.from(source.hue, SEED_CHROMA, source.tone)
-    return toColorScheme(
+fun aikaColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme =
+    toColorScheme(
         SchemeContent(
-            sourceColorHct = seed,
+            sourceColorHct = Hct.fromInt(seedColor.toArgb()),
             isDark = darkTheme,
             contrastLevel = 0.0,
         ),
         darkTheme,
     )
-}
 
 /** material-color-utilities 配色方案 → 全套 M3 角色映射 */
 private fun toColorScheme(scheme: DynamicScheme, darkTheme: Boolean): ColorScheme =
