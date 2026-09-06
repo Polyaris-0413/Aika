@@ -4,7 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -119,7 +124,15 @@ fun TodoScreen() {
                         placementSpec = tween(AnimationTokens.Medium)
                     )
                 ) {
-                    if (isFirstDone) {
+                    // 标题随分区归属渐现/渐隐:完成项布局位置不变时(如唯一/末尾任务),
+                    // 该过渡是唯一的可见反馈,故需独立于 placement 动画存在
+                    AnimatedVisibility(
+                        visible = isFirstDone,
+                        enter = fadeIn(tween(AnimationTokens.Large)) +
+                            expandVertically(tween(AnimationTokens.Medium)),
+                        exit = fadeOut(tween(AnimationTokens.Medium)) +
+                            shrinkVertically(tween(AnimationTokens.Medium))
+                    ) {
                         Text(
                             text = stringResource(R.string.group_completed),
                             style = MaterialTheme.typography.labelLarge,
