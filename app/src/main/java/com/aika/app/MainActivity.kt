@@ -30,35 +30,29 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.aika.app.data.Task
+import com.aika.app.data.TaskRepository
 import com.aika.app.ui.components.animatedGroupItemShape
 import com.aika.app.ui.components.groupItemSpacing
 import com.aika.app.ui.components.groupTitleSpacing
 import com.aika.app.ui.components.listItemColors
 import com.aika.app.ui.theme.AikaTheme
 import com.aika.app.ui.theme.AnimationTokens
-
-/**
- * 一条待办。列表物理顺序 = 显示顺序:未完成区在前,已完成区在后,
- * toggle 时把项从原位取出再插入目标区,配合稳定 id 让 LazyColumn 播放跨区滑动动画。
- */
-data class Task(
-    val id: Long,
-    val title: String,
-    val completed: Boolean = false,
-)
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,23 +68,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun TodoScreen() {
-    var nextTaskId by remember { mutableLongStateOf(0L) }
-    val tasks = remember { mutableStateListOf<Task>() }
+    val context = LocalContext.current
+    val repository = remember { TaskRepository(context) }
+    val scope = rememberCoroutineScope()
+    val tasks by repository.tasks.collectAsState(initial = emptyList())
     var showAddSheet by remember { mutableStateOf(false) }
-
-    fun toggleTask(task: Task) {
-        val updated = task.copy(completed = !task.completed)
-        tasks.removeAll { it.id == task.id }
-        if (updated.completed) {
-            // 完成时沉底,追加到已完成区末尾
-            tasks.add(updated)
-        } else {
-            // 恢复时插回未完成区末尾(首个已完成项之前;整表无已完成项则到末尾)
-            val insertAt = tasks.indexOfFirst { it.completed }
-                .takeIf { it >= 0 } ?: tasks.size
-            tasks.add(insertAt, updated)
-        }
-    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -164,7 +146,9 @@ fun TodoScreen() {
                                     tween(AnimationTokens.Medium)
                                 )
                             )
-                            .clickable { toggleTask(task) }
+                            .clickable {
+                                scope.launch { repository.toggleTask(task) }
+                            }
                     )
                 }
             }
@@ -174,8 +158,8 @@ fun TodoScreen() {
     if (showAddSheet) {
         AddTaskSheet(
             onConfirm = { title ->
-                tasks.add(Task(id = nextTaskId++, title = title))
                 showAddSheet = false
+                scope.launch { repository.addTask(title) }
             },
             onDismiss = { showAddSheet = false }
         )
