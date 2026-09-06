@@ -11,16 +11,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
 import com.materialkolor.scheme.DynamicScheme
-import com.materialkolor.scheme.SchemeNeutral
+import com.materialkolor.scheme.SchemeTonalSpot
 
 /**
- * 由种子色经 HCT 算法公式生成整套 M3 配色方案(与 Folio 同算法同变体)。
- * Neutral 变体:背景/表面为中性色(灰/白),主题色只出现在
- * primary 等强调角色(FAB、选中态、强调文字)。
+ * 由种子色经 HCT 算法公式生成整套 M3 配色方案(与 Folio 同算法)。
+ * TonalSpot 变体(Material You 官方默认):primary 彩度鲜明,
+ * 背景/表面保持近中性——曾试 Neutral 变体,primary 彩度过低整体发灰。
  */
 fun aikaColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme =
     toColorScheme(
-        SchemeNeutral(
+        SchemeTonalSpot(
             sourceColorHct = Hct.fromInt(seedColor.toArgb()),
             isDark = darkTheme,
             contrastLevel = 0.0,
