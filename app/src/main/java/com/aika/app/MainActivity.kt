@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.aika.app.ui.components.groupItemShape
 import com.aika.app.ui.components.groupItemSpacing
 import com.aika.app.ui.components.listItemColors
+import com.aika.app.ui.theme.AnimationTokens
 import com.aika.app.ui.theme.AikaTheme
 
 class MainActivity : ComponentActivity() {
@@ -78,7 +80,12 @@ fun TodoScreen() {
                 ListItem(
                     headlineContent = { Text(text = task) },
                     colors = listItemColors(),
-                    modifier = Modifier.clip(groupItemShape(index, tasks.size))
+                    modifier = Modifier
+                        .animateItem(
+                            fadeInSpec = tween(AnimationTokens.Large),
+                            placementSpec = tween(AnimationTokens.Medium)
+                        )
+                        .clip(groupItemShape(index, tasks.size))
                 )
             }
         }
