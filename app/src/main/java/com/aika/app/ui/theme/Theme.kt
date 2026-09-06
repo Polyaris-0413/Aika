@@ -19,6 +19,9 @@ import com.materialkolor.scheme.SchemeTonalSpot
  * 浅色用 Content 变体保真种子彩度;深色用 TonalSpot(官方动态取色同款,深色彩度档 36):
  * 暗环境下同彩度感知更鲜艳(Hunt 效应),浅色浓淡直接用于深色会过艳,
  * 故深色沿用官方深色档(primary 与 Google 深色标准蓝 #A8C7FA 一致)。
+ *
+ * 备选:浅色改用 TonalSpot 可获 100% 深浅一致,但 primary 降为 #4d5c92(彩度 36)
+ * ——实测浅色偏素,已放弃;若日后深浅切换显违和,优先回查此混搭组合。
  */
 fun aikaColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme =
     toColorScheme(
