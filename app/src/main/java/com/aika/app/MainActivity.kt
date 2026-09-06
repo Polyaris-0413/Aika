@@ -4,12 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -85,6 +80,9 @@ fun TodoScreen() {
             }
         }
     ) { innerPadding ->
+        val pendingTasks = tasks.filter { !it.completed }
+        val doneTasks = tasks.filter { it.completed }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -92,65 +90,47 @@ fun TodoScreen() {
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(groupItemSpacing)
         ) {
-            itemsIndexed(tasks, key = { _, task -> task.id }) { index, task ->
-                val pendingCount = tasks.count { !it.completed }
-                // 已完成标题挂在区内首个已完成项上,随其一起滑入
-                val isFirstDone = task.completed && (index == 0 || !tasks[index - 1].completed)
-                // 拼接形状按区内位置计算:未完成区在前可直接用全局 index
-                val positionInGroup = if (task.completed) index - pendingCount else index
-                val groupCount = if (task.completed) tasks.size - pendingCount else pendingCount
-
-                Column(
+            itemsIndexed(pendingTasks, key = { _, task -> task.id }) { index, task ->
+                TaskRow(
+                    task = task,
+                    positionInGroup = index,
+                    groupCount = pendingTasks.size,
                     modifier = Modifier.animateItem(
                         fadeInSpec = tween(AnimationTokens.Large),
                         placementSpec = tween(AnimationTokens.Medium)
-                    )
-                ) {
-                    // 标题随分区归属渐现/渐隐:完成项布局位置不变时(如唯一/末尾任务),
-                    // 该过渡是唯一的可见反馈,故需独立于 placement 动画存在
-                    AnimatedVisibility(
-                        visible = isFirstDone,
-                        enter = fadeIn(tween(AnimationTokens.Large)) +
-                            expandVertically(tween(AnimationTokens.Medium)),
-                        exit = fadeOut(tween(AnimationTokens.Medium)) +
-                            shrinkVertically(tween(AnimationTokens.Medium))
-                    ) {
-                        Text(
-                            text = stringResource(R.string.group_completed),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(
-                                start = 16.dp,
-                                top = 16.dp,
-                                bottom = groupTitleSpacing
-                            )
-                        )
-                    }
-                    ListItem(
-                        headlineContent = {
-                            Text(
-                                text = task.title,
-                                color = if (task.completed) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
-                            )
-                        },
-                        colors = listItemColors(),
+                    ),
+                    onToggle = { scope.launch { repository.toggleTask(task) } }
+                )
+            }
+            // 固定 key 的独立标题项:恢复任务时位置不变则纹丝不动,变化时平滑滑动,
+            // 出现/消失由 animateItem 的淡入淡出兜底——避免标题随项"消失又重现"的瞬移感
+            if (doneTasks.isNotEmpty()) {
+                item(key = "completed-header") {
+                    Text(
+                        text = stringResource(R.string.group_completed),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            .clip(
-                                animatedGroupItemShape(
-                                    positionInGroup,
-                                    groupCount,
-                                    tween(AnimationTokens.Medium)
-                                )
+                            .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
+                            .animateItem(
+                                fadeInSpec = tween(AnimationTokens.Large),
+                                placementSpec = tween(AnimationTokens.Medium),
+                                fadeOutSpec = tween(AnimationTokens.Medium)
                             )
-                            .clickable {
-                                scope.launch { repository.toggleTask(task) }
-                            }
                     )
                 }
+            }
+            itemsIndexed(doneTasks, key = { _, task -> task.id }) { index, task ->
+                TaskRow(
+                    task = task,
+                    positionInGroup = index,
+                    groupCount = doneTasks.size,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = tween(AnimationTokens.Large),
+                        placementSpec = tween(AnimationTokens.Medium)
+                    ),
+                    onToggle = { scope.launch { repository.toggleTask(task) } }
+                )
             }
         }
     }
@@ -164,6 +144,40 @@ fun TodoScreen() {
             onDismiss = { showAddSheet = false }
         )
     }
+}
+
+/** 拼接卡片样式的任务行:未完成/已完成两区共用,形状按区内位置计算;
+ *  animateItem 属于 LazyItemScope,须由列表项 lambda 以 modifier 传入 */
+@Composable
+private fun TaskRow(
+    task: Task,
+    positionInGroup: Int,
+    groupCount: Int,
+    modifier: Modifier = Modifier,
+    onToggle: () -> Unit
+) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = task.title,
+                color = if (task.completed) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
+            )
+        },
+        colors = listItemColors(),
+        modifier = modifier
+            .clip(
+                animatedGroupItemShape(
+                    positionInGroup,
+                    groupCount,
+                    tween(AnimationTokens.Medium)
+                )
+            )
+            .clickable(onClick = onToggle)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
