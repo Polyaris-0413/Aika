@@ -12,30 +12,31 @@ import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
 import com.materialkolor.scheme.DynamicScheme
 import com.materialkolor.scheme.SchemeContent
+import com.materialkolor.scheme.SchemeTonalSpot
 
 /**
- * 由种子色经 HCT 算法公式生成整套 M3 配色方案(与 Folio 同算法)。
- * Content 变体保真种子彩度,浅色 primary 会被色域上限自然约束,深色则放行到过艳;
- * 故深色种子的彩度取浅色 primary 的实际彩度(色域约束后的客观值),
- * 使深浅两套角色浓淡一致,且该值随色相自动推导,无需人工定档。
+ * 由种子色经 HCT 算法公式生成整套 M3 配色方案。
+ * 浅色用 Content 变体保真种子彩度;深色用 TonalSpot(官方动态取色同款,深色彩度档 36):
+ * 暗环境下同彩度感知更鲜艳(Hunt 效应),浅色浓淡直接用于深色会过艳,
+ * 故深色沿用官方深色档(primary 与 Google 深色标准蓝 #A8C7FA 一致)。
  */
-fun aikaColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme {
-    val source = Hct.fromInt(seedColor.toArgb())
-    val seed = if (darkTheme) {
-        val lightPrimaryChroma = Hct.fromInt(SchemeContent(source, false, 0.0).primary).chroma
-        Hct.from(source.hue, lightPrimaryChroma, source.tone)
-    } else {
-        source
-    }
-    return toColorScheme(
-        SchemeContent(
-            sourceColorHct = seed,
-            isDark = darkTheme,
-            contrastLevel = 0.0,
-        ),
+fun aikaColorScheme(seedColor: Color, darkTheme: Boolean): ColorScheme =
+    toColorScheme(
+        if (darkTheme) {
+            SchemeTonalSpot(
+                sourceColorHct = Hct.fromInt(seedColor.toArgb()),
+                isDark = true,
+                contrastLevel = 0.0,
+            )
+        } else {
+            SchemeContent(
+                sourceColorHct = Hct.fromInt(seedColor.toArgb()),
+                isDark = false,
+                contrastLevel = 0.0,
+            )
+        },
         darkTheme,
     )
-}
 
 /** material-color-utilities 配色方案 → 全套 M3 角色映射 */
 private fun toColorScheme(scheme: DynamicScheme, darkTheme: Boolean): ColorScheme =
