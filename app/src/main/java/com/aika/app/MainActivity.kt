@@ -12,14 +12,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material3.AlertDialog
@@ -29,7 +26,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -66,13 +62,14 @@ import kotlinx.coroutines.launch
 /** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
 private const val CompletedHeaderKey = "completed-header"
 
-/** 今日日期,按系统语言本地化("9月7日 星期日"样式) */
+/** 今日日期,按系统语言本地化,日期与星期分段格式化后拼接("9月7日 星期一"样式,含分隔空格) */
 private fun todayLabel(): String {
-    val pattern = android.text.format.DateFormat.getBestDateTimePattern(
-        Locale.getDefault(),
-        "MMMd EEEE",
-    )
-    return DateTimeFormatter.ofPattern(pattern, Locale.getDefault()).format(LocalDate.now())
+    val locale = Locale.getDefault()
+    val datePattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "MMMd")
+    val weekdayPattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "EEEE")
+    val date = DateTimeFormatter.ofPattern(datePattern, locale).format(LocalDate.now())
+    val weekday = DateTimeFormatter.ofPattern(weekdayPattern, locale).format(LocalDate.now())
+    return "$date $weekday"
 }
 
 class MainActivity : ComponentActivity() {
@@ -132,23 +129,19 @@ fun TodoScreen() {
                         .fillMaxWidth()
                         .padding(start = 16.dp, bottom = groupTitleSpacing)
                 ) {
+                    val pendingLabel = stringResource(R.string.stat_pending)
+                    val completedLabel = stringResource(R.string.stat_completed)
                     Text(
                         text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = todayLabel(),
+                        text = "${todayLabel()} · $pendingLabel ${pendingTasks.size} · " +
+                            "$completedLabel ${doneTasks.size}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Row(
-                        modifier = Modifier.padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        StatPill(label = stringResource(R.string.stat_pending), count = pendingTasks.size)
-                        StatPill(label = stringResource(R.string.stat_completed), count = doneTasks.size)
-                    }
                 }
             }
             itemsIndexed(displayItems, key = { _, item -> item?.id ?: CompletedHeaderKey }) { index, item ->
@@ -188,32 +181,6 @@ fun TodoScreen() {
             onConfirm = { title -> scope.launch { repository.addTask(title) } },
             onDismiss = { showAddSheet = false }
         )
-    }
-}
-
-/** 顶部统计胶囊:pill 形状,底色比任务卡(surfaceContainerHigh)浅一档以示层级 */
-@Composable
-private fun StatPill(label: String, count: Int) {
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
     }
 }
 
