@@ -152,10 +152,11 @@ fun TodoScreen() {
         }
     ) { innerPadding ->
         // 圆角大面板包裹任务列表(Grit 思路):背景 < 面板(surfaceContainer)< 任务卡,三层递进;
-        // 面板从顶栏下方"长出"(仅顶部两个大圆角),延伸到屏幕底部
+        // 面板从顶栏下方"长出"(仅顶部两个大圆角),延伸到屏幕底部。
+        // 面板圆角 = 任务卡圆角(12)+ 面板内边距(8)= 20,满足同心圆角原则(与卡片弧线同心)
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
