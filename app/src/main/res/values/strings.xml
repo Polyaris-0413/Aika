@@ -5,5 +5,7 @@
     <string name="label_task_title">任务内容</string>
     <string name="action_save_task">保存</string>
     <string name="action_cancel_task">取消</string>
+    <string name="stat_pending">待办</string>
+    <string name="stat_completed">已完成</string>
     <string name="group_completed">已完成</string>
 </resources>
