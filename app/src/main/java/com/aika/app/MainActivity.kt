@@ -23,10 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -120,8 +118,8 @@ fun TodoScreen() {
     } else {
         pendingTasks + listOf<Task?>(null) + doneTasks
     }
-    // Grit 同款:大顶栏随滚动收放(下滚收起、上滚出现),与列表通过 nestedScroll 联动
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    // pinned:顶栏固定不收放,统计常驻可见;个人待办列表通常不满一屏,enterAlways 收放几乎不触发
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
         modifier = Modifier
@@ -167,12 +165,9 @@ fun TodoScreen() {
                 .padding(top = innerPadding.calculateTopPadding())
         ) {
             if (tasks.isEmpty()) {
-                // 空状态:居中占位(图标圆底 + 标题 + 引导语);
-                // verticalScroll 使空态也参与嵌套滚动,顶栏的 enterAlways 收放行为不失效
+                // 空状态:居中占位(图标圆底 + 标题 + 引导语)
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
