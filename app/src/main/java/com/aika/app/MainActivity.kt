@@ -6,8 +6,15 @@ import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -132,11 +139,20 @@ fun TodoScreen() {
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "$pendingLabel ${pendingTasks.size} · $completedLabel ${doneTasks.size}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row {
+                    Text(
+                        text = "$pendingLabel ",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    AnimatedCounter(count = pendingTasks.size)
+                    Text(
+                        text = " · $completedLabel ",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    AnimatedCounter(count = doneTasks.size)
+                }
             }
         },
         floatingActionButton = {
@@ -238,6 +254,34 @@ fun TodoScreen() {
         AddTaskDialog(
             onConfirm = { title -> scope.launch { repository.addTask(title) } },
             onDismiss = { showAddSheet = false }
+        )
+    }
+}
+
+/** 顶栏统计数字:变化时新旧数字按增减方向垂直滚动交接(增加上滚、减少下滚) */
+@Composable
+private fun AnimatedCounter(count: Int) {
+    AnimatedContent(
+        targetState = count,
+        transitionSpec = {
+            if (targetState > initialState) {
+                (slideInVertically(tween(AnimationTokens.Medium)) { it } +
+                    fadeIn(tween(AnimationTokens.Medium))) togetherWith
+                    (slideOutVertically(tween(AnimationTokens.Medium)) { -it } +
+                        fadeOut(tween(AnimationTokens.Medium)))
+            } else {
+                (slideInVertically(tween(AnimationTokens.Medium)) { -it } +
+                    fadeIn(tween(AnimationTokens.Medium))) togetherWith
+                    (slideOutVertically(tween(AnimationTokens.Medium)) { it } +
+                        fadeOut(tween(AnimationTokens.Medium)))
+            }.using(SizeTransform(clip = false))
+        },
+        label = "statCount"
+    ) { value ->
+        Text(
+            text = value.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
