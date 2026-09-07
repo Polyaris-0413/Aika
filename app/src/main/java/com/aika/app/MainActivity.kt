@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.focus.FocusRequester
@@ -93,8 +95,44 @@ fun TodoScreen() {
     // 旋转等配置变更会重建 Activity,remember 状态丢失;可恢复的 UI 状态一律 rememberSaveable
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
 
+    val pendingTasks = tasks.filter { !it.completed }
+    val doneTasks = tasks.filter { it.completed }
+    // 标题以 null 占位插入交界处,三个 items 块并成单一块:
+    // 任务跨区移动才能被识别为同块内 key 移动(组合复用,涟漪与滑动动画连续),
+    // 否则组合销毁重建,涟漪状态随旧组合销毁而中断
+    val displayItems = if (doneTasks.isEmpty()) {
+        pendingTasks
+    } else {
+        pendingTasks + listOf<Task?>(null) + doneTasks
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        topBar = {
+            // 顶栏容器色比内容背景(surface)高一档,与任务卡(surfaceContainerHigh)形成
+            // 背景 < 顶栏 < 卡片的三层 surface 层级
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = groupTitleSpacing)
+            ) {
+                val pendingLabel = stringResource(R.string.stat_pending)
+                val completedLabel = stringResource(R.string.stat_completed)
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${todayLabel()} · $pendingLabel ${pendingTasks.size} · " +
+                        "$completedLabel ${doneTasks.size}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddSheet = true }) {
                 Icon(
@@ -104,17 +142,6 @@ fun TodoScreen() {
             }
         }
     ) { innerPadding ->
-        val pendingTasks = tasks.filter { !it.completed }
-        val doneTasks = tasks.filter { it.completed }
-        // 标题以 null 占位插入交界处,三个 items 块并成单一块:
-        // 任务跨区移动才能被识别为同块内 key 移动(组合复用,涟漪与滑动动画连续),
-        // 否则组合销毁重建,涟漪状态随旧组合销毁而中断
-        val displayItems = if (doneTasks.isEmpty()) {
-            pendingTasks
-        } else {
-            pendingTasks + listOf<Task?>(null) + doneTasks
-        }
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -122,28 +149,6 @@ fun TodoScreen() {
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(groupItemSpacing)
         ) {
-            item(key = "app-header") {
-                // 大标题随列表滚动:start 16dp 与卡片内文字视觉对齐(卡片外缘 12 + 内边距 16)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, bottom = groupTitleSpacing)
-                ) {
-                    val pendingLabel = stringResource(R.string.stat_pending)
-                    val completedLabel = stringResource(R.string.stat_completed)
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "${todayLabel()} · $pendingLabel ${pendingTasks.size} · " +
-                            "$completedLabel ${doneTasks.size}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
             itemsIndexed(displayItems, key = { _, item -> item?.id ?: CompletedHeaderKey }) { index, item ->
                 if (item == null) {
                     Text(
