@@ -1,6 +1,7 @@
 package com.aika.app
 
 import android.os.Bundle
+import android.text.format.DateFormat
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +10,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,10 +54,22 @@ import com.aika.app.ui.components.groupTitleSpacing
 import com.aika.app.ui.components.listItemColors
 import com.aika.app.ui.theme.AikaTheme
 import com.aika.app.ui.theme.AnimationTokens
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 /** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
 private const val CompletedHeaderKey = "completed-header"
+
+/** 今日日期,按系统语言本地化("9月7日 星期日"样式) */
+private fun todayLabel(): String {
+    val pattern = android.text.format.DateFormat.getBestDateTimePattern(
+        Locale.getDefault(),
+        "MMMd EEEE",
+    )
+    return DateTimeFormatter.ofPattern(pattern, Locale.getDefault()).format(LocalDate.now())
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,6 +121,25 @@ fun TodoScreen() {
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(groupItemSpacing)
         ) {
+            item(key = "app-header") {
+                // 大标题随列表滚动:start 16dp 与卡片内文字视觉对齐(卡片外缘 12 + 内边距 16)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, bottom = groupTitleSpacing)
+                ) {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = todayLabel(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             itemsIndexed(displayItems, key = { _, item -> item?.id ?: CompletedHeaderKey }) { index, item ->
                 if (item == null) {
                     Text(
