@@ -1,40 +1,40 @@
 package com.aika.app
 
 import android.os.Bundle
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,7 +52,8 @@ import kotlinx.coroutines.launch
 /** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
 private const val CompletedHeaderKey = "completed-header"
 
-class MainActivity : ComponentActivity() {    override fun onCreate(savedInstanceState: Bundle?) {
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -69,7 +70,8 @@ fun TodoScreen() {
     val repository = remember { TaskRepository(context) }
     val scope = rememberCoroutineScope()
     val tasks by repository.tasks.collectAsState(initial = emptyList())
-    var showAddSheet by remember { mutableStateOf(false) }
+    // 旋转等配置变更会重建 Activity,remember 状态丢失;可恢复的 UI 状态一律 rememberSaveable
+    var showAddSheet by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -131,11 +133,8 @@ fun TodoScreen() {
     }
 
     if (showAddSheet) {
-        AddTaskSheet(
-            onConfirm = { title ->
-                showAddSheet = false
-                scope.launch { repository.addTask(title) }
-            },
+        AddTaskDialog(
+            onConfirm = { title -> scope.launch { repository.addTask(title) } },
             onDismiss = { showAddSheet = false }
         )
     }
@@ -175,21 +174,27 @@ private fun TaskRow(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddTaskSheet(
+private fun AddTaskDialog(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var text by remember { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf("") }
+    // dialog 与 bottom sheet 同为独立 popup 窗口:窗口销毁会连带强制隐藏 IME(无收起动画),
+    // 故关闭前先向 IMM 发收起请求并清 view 焦点,让 IME 走系统正常收起流程
+    val view = LocalView.current
+    val imm = remember { view.context.getSystemService(InputMethodManager::class.java) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    fun dismiss() {
+        imm?.hideSoftInputFromWindow(view.windowToken, 0)
+        view.clearFocus()
+        onDismiss()
+    }
+
+    AlertDialog(
+        onDismissRequest = ::dismiss,
+        title = { Text(stringResource(R.string.action_add_task)) },
+        text = {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
@@ -197,15 +202,24 @@ private fun AddTaskSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-            Button(
-                onClick = { onConfirm(text.trim()) },
-                enabled = text.isNotBlank(),
-                modifier = Modifier.align(Alignment.End)
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(text.trim())
+                    dismiss()
+                },
+                enabled = text.isNotBlank()
             ) {
                 Text(stringResource(R.string.action_save_task))
             }
+        },
+        dismissButton = {
+            TextButton(onClick = ::dismiss) {
+                Text(stringResource(R.string.action_cancel_task))
+            }
         }
-    }
+    )
 }
 
 @Preview(showBackground = true)
