@@ -114,7 +114,8 @@ fun TodoScreen() {
                         modifier = Modifier
                             .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
                             .animateItem(
-                                fadeInSpec = tween(AnimationTokens.Large),
+                                // 同任务行:出现淡入在深色下有黑闪感,禁用;消失淡出保留(正常)
+                                fadeInSpec = null,
                                 placementSpec = tween(AnimationTokens.Medium),
                                 fadeOutSpec = tween(AnimationTokens.Medium)
                             )
@@ -124,10 +125,11 @@ fun TodoScreen() {
                         task = item,
                         positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
                         groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
-                        modifier = Modifier.animateItem(
-                            fadeInSpec = tween(AnimationTokens.Large),
-                            placementSpec = tween(AnimationTokens.Medium)
-                        ),
+        modifier = Modifier.animateItem(
+            // 出现淡入在深色下表现为卡片从纯黑背景渐显,被感知为黑闪,故禁用;新项直出
+            fadeInSpec = null,
+            placementSpec = tween(AnimationTokens.Medium)
+        ),
                         onToggle = { scope.launch { repository.toggleTask(item) } }
                     )
                 }
