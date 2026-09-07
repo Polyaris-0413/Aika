@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.focusRequester
+import androidx.compose.foundation.relocation.FocusRequester
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -24,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -184,6 +187,12 @@ private fun AddTaskDialog(
     // 故关闭前先向 IMM 发收起请求并清 view 焦点,让 IME 走系统正常收起流程
     val view = LocalView.current
     val imm = remember { view.context.getSystemService(InputMethodManager::class.java) }
+    val focusRequester = remember { FocusRequester() }
+
+    // dialog 窗口完成 attach 后自动聚焦输入框,焦点驱动输入法弹出
+    LaunchedEffect(Unit) {
+        view.post { focusRequester.requestFocus() }
+    }
 
     fun dismiss() {
         imm?.hideSoftInputFromWindow(view.windowToken, 0)
@@ -200,7 +209,9 @@ private fun AddTaskDialog(
                 onValueChange = { text = it },
                 label = { Text(stringResource(R.string.label_task_title)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
             )
         },
         confirmButton = {
