@@ -20,16 +20,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,10 +36,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -98,7 +95,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoScreen() {
     val context = LocalContext.current
@@ -118,36 +114,30 @@ fun TodoScreen() {
     } else {
         pendingTasks + listOf<Task?>(null) + doneTasks
     }
-    // pinned:顶栏固定不收放,统计常驻可见;个人待办列表通常不满一屏,enterAlways 收放几乎不触发
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-
+    // pinned 等价的固定顶栏:紧凑贴顶,标题与统计都在顶栏内
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
-            // 容器色与背景一致(展开时与页面融为一体);title 槽内排两行模拟 subtitle。
-            // 默认展开高度 152dp 对两行标题过空,压缩后标题区上移紧凑
-            LargeTopAppBar(
-                expandedHeight = 120.dp,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                ),
-                scrollBehavior = scrollBehavior,
-                title = {
-                    Column {
-                        val pendingLabel = stringResource(R.string.stat_pending)
-                        val completedLabel = stringResource(R.string.stat_completed)
-                        Text(text = stringResource(R.string.app_name))
-                        Text(
-                            text = "$pendingLabel ${pendingTasks.size} · $completedLabel ${doneTasks.size}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = groupTitleSpacing)
+            ) {
+                val pendingLabel = stringResource(R.string.stat_pending)
+                val completedLabel = stringResource(R.string.stat_completed)
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "$pendingLabel ${pendingTasks.size} · $completedLabel ${doneTasks.size}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddSheet = true }) {
