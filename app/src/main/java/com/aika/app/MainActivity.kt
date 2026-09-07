@@ -5,6 +5,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -125,11 +127,11 @@ fun TodoScreen() {
                         task = item,
                         positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
                         groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
-        modifier = Modifier.animateItem(
-            // 出现淡入在深色下表现为卡片从纯黑背景渐显,被感知为黑闪,故禁用;新项直出
-            fadeInSpec = null,
-            placementSpec = tween(AnimationTokens.Medium)
-        ),
+                        modifier = Modifier.animateItem(
+                            // 卡片底直出:整卡淡入在深色下表现为底色从纯黑渐显(黑闪)
+                            fadeInSpec = null,
+                            placementSpec = tween(AnimationTokens.Medium)
+                        ),
                         onToggle = { scope.launch { repository.toggleTask(item) } }
                     )
                 }
@@ -155,6 +157,16 @@ private fun TaskRow(
     modifier: Modifier = Modifier,
     onToggle: () -> Unit
 ) {
+    // 淡入只作用于前景文字:从已直出的卡片底泛出(不经过黑态)。
+    // remember 状态在跨区移动的组合复用下保留,移动时文字不会重播淡入
+    var contentVisible by remember { mutableStateOf(false) }
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (contentVisible) 1f else 0f,
+        animationSpec = tween(AnimationTokens.Large),
+        label = "taskContentAlpha"
+    )
+    LaunchedEffect(Unit) { contentVisible = true }
+
     ListItem(
         headlineContent = {
             Text(
@@ -163,7 +175,8 @@ private fun TaskRow(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 } else {
                     MaterialTheme.colorScheme.onSurface
-                }
+                },
+                modifier = Modifier.alpha(contentAlpha)
             )
         },
         colors = listItemColors(),
