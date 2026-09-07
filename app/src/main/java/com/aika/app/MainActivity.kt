@@ -126,8 +126,10 @@ fun TodoScreen() {
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            // 容器色与背景一致(展开时与页面融为一体);title 槽内排两行模拟 subtitle
+            // 容器色与背景一致(展开时与页面融为一体);title 槽内排两行模拟 subtitle。
+            // 默认展开高度 152dp 对两行标题过空,压缩后标题区上移紧凑
             LargeTopAppBar(
+                expandedHeight = 120.dp,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.surface
