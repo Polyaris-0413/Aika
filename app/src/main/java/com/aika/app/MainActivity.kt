@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -156,14 +158,23 @@ fun TodoScreen() {
             }
         }
     ) { innerPadding ->
-        if (tasks.isEmpty()) {
-            // 空状态:面板与列表整体隐藏,居中占位(图标圆底 + 标题 + 引导语)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
+        // 面板始终显示(空态时承载居中占位),层级结构与有任务时保持一致
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding())
+        ) {
+            if (tasks.isEmpty()) {
+                // 空状态:居中占位(图标圆底 + 标题 + 引导语);
+                // verticalScroll 使空态也参与嵌套滚动,顶栏的 enterAlways 收放行为不失效
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
@@ -191,18 +202,8 @@ fun TodoScreen() {
                     )
                 }
             }
-        } else {
-        // 圆角大面板包裹任务列表(Grit 思路):背景 < 面板(surfaceContainer)< 任务卡,三层递进;
-        // 面板从顶栏下方"长出"(仅顶部两个大圆角),延伸到屏幕底部。
-        // 面板圆角 = 任务卡圆角(12)+ 面板内边距(8)= 20,满足同心圆角原则(与卡片弧线同心)
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
-        ) {
-            LazyColumn(
+            } else {
+                LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 8.dp,
