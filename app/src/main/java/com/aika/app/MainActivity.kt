@@ -7,6 +7,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -173,7 +175,20 @@ fun TodoScreen() {
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
         ) {
-            if (tasks.isEmpty()) {
+            AnimatedContent(
+                targetState = tasks.isEmpty(),
+                transitionSpec = {
+                    if (targetState) {
+                        // 删空恢复:维持瞬时切换;占位出现淡入在深色下有黑闪感(同下方 animateItem 注释)
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else {
+                        // 首个待办出现:仅占位淡出;列表直出不淡入(黑闪),占位居下层不拦截点击
+                        EnterTransition.None togetherWith fadeOut(tween(AnimationTokens.Large))
+                    }
+                },
+                label = "emptyState"
+            ) { isEmpty ->
+                if (isEmpty) {
                 // 空状态:居中占位(图标圆底 + 标题 + 引导语)
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -245,6 +260,7 @@ fun TodoScreen() {
                         onToggle = { scope.launch { repository.toggleTask(item) } }
                     )
                 }
+            }
             }
             }
         }
