@@ -7,8 +7,6 @@ Material Symbols 的 SVG 官方坐标系是负 Y 以及 viewBox 从 -960 开始
 而 Android vector 的视口固定从 0 开始   
 若直接把 SVG path 抄进 vector drawable 图形会整体画在视口外 编译不报错但图标不显示  
 
-必须用 group 节点 android:translateY=960 包裹 path 平移回正区间 写法参考 app/src/main/res/drawable/ic_menu.xml
-
 ### 规范
 图标命名 ic_用途.xml
 
@@ -24,5 +22,5 @@ Material Symbols 的 SVG 官方坐标系是负 Y 以及 viewBox 从 -960 开始
 路径为 C:\Users\Administrator\.zcode\skills\material-3
 
 ### 3. 杂项
-- 禁止私自进行与输入有关的调试 这会导致输入法的BUG 应要求用户进行手动调试
+- 禁止私自进行与键盘输入有关的调试 这会导致输入法的BUG 应要求用户进行手动调试
 - baseline profile 无法在真机上录制 原因未知 需要使用虚拟机 
