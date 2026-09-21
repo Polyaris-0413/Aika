@@ -22,6 +22,9 @@ android {
 
     buildTypes {
         release {
+            // 测试用:用 debug 签名,可直接覆盖安装到已装 debug 版的机器上做性能对比。
+            // 若将来要真发布,这里需要换成正式签名
+            signingConfig = signingConfigs.getByName("debug")
             optimization {
                 enable = false
             }
