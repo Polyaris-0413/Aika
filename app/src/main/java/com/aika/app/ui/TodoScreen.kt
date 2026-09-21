@@ -184,11 +184,13 @@ fun TodoScreen(contentPadding: PaddingValues) {
         // 面板始终显示(空态时承载居中占位),层级结构与有任务时保持一致
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(20.dp),
+            // 只有上边圆角:面板从底栏升起,底边与底栏同在屏幕下沿
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             modifier = Modifier
                 .fillMaxSize()
-                // 避让底部导航栏 + 留一圈底色:屏幕自身的 R 角才不会和面板/卡片的圆角打架
-                .padding(bottom = contentPadding.calculateBottomPadding() + 16.dp)
+                // 面板直接接底栏:两者底色不同(面板 surfaceContainer / 底栏 background),
+                // 四角圆角靠这层色差衬托,不再需要额外的底色边
+                .padding(bottom = contentPadding.calculateBottomPadding())
         ) {
             AnimatedContent(
                 targetState = tasks.isEmpty(),

@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.aika.app.ui.SettingsScreen
 import com.aika.app.ui.TodoScreen
 import com.aika.app.ui.theme.AikaTheme
@@ -48,7 +49,11 @@ fun AikaApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                // 与内容面板同色(默认 surfaceContainer),并关掉默认的色调叠加 ——
+                // 否则会比面板亮一档,连不成一体。面板与底栏相连,只靠顶边圆角与顶栏底色区分
+                tonalElevation = 0.dp,
+            ) {
                 NavigationBarItem(
                     selected = currentTab == AikaTab.Tasks,
                     onClick = { currentTab = AikaTab.Tasks },
