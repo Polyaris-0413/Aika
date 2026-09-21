@@ -10,7 +10,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,7 +50,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,9 +58,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -78,6 +78,7 @@ import com.aika.app.ui.theme.AnimationTokens
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
@@ -110,7 +111,16 @@ fun TodoScreen() {
     val context = LocalContext.current
     val repository = remember { TaskRepository(context) }
     val scope = rememberCoroutineScope()
-    val tasks by repository.tasks.collectAsState(initial = emptyList())
+    // 首屏(Room 首次发射已有数据)直出,不播放入场;此后新增的项才滑入
+    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
+    var animateAppear by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        var firstEmission = true
+        repository.tasks.collect { list ->
+            tasks = list
+            if (firstEmission) firstEmission = false else animateAppear = true
+        }
+    }
     // 旋转等配置变更会重建 Activity,remember 状态丢失;可恢复的 UI 状态一律 rememberSaveable
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
 
@@ -252,8 +262,9 @@ fun TodoScreen() {
                         task = item,
                         positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
                         groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
+                        animateAppear = animateAppear,
                         modifier = Modifier.animateItem(
-                            // 卡片底直出:整卡淡入在深色下表现为底色从纯黑渐显(黑闪)
+                            // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
                             fadeInSpec = null,
                             placementSpec = tween(AnimationTokens.Medium)
                         ),
@@ -310,18 +321,17 @@ private fun TaskRow(
     task: Task,
     positionInGroup: Int,
     groupCount: Int,
+    animateAppear: Boolean,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit
 ) {
-    // 淡入只作用于前景文字:从已直出的卡片底泛出(不经过黑态)。
-    // remember 状态在跨区移动的组合复用下保留,移动时文字不会重播淡入
-    var contentVisible by remember { mutableStateOf(false) }
-    val contentAlpha by animateFloatAsState(
-        targetValue = if (contentVisible) 1f else 0f,
-        animationSpec = tween(AnimationTokens.Large),
-        label = "taskContentAlpha"
-    )
-    LaunchedEffect(Unit) { contentVisible = true }
+    // 入场:新增项自下方滑入并淡入(深色下面板色≈黑,单纯淡入会被感知为黑闪,位移给出进入方向)。
+    // 首屏已有数据直出;remember 在跨区移动的组合复用下保留,移动时不重播
+    val appear = remember { Animatable(if (animateAppear) 0f else 1f) }
+    val riseDistance = with(LocalDensity.current) { AnimationTokens.AppearRiseDp.dp.toPx() }
+    LaunchedEffect(Unit) {
+        if (animateAppear) appear.animateTo(1f, tween(AnimationTokens.Large))
+    }
 
     ListItem(
         headlineContent = {
@@ -331,12 +341,15 @@ private fun TaskRow(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 } else {
                     MaterialTheme.colorScheme.onSurface
-                },
-                modifier = Modifier.alpha(contentAlpha)
+                }
             )
         },
         colors = listItemColors(),
         modifier = modifier
+            .graphicsLayer {
+                alpha = appear.value
+                translationY = (1f - appear.value) * riseDistance
+            }
             .clip(
                 animatedGroupItemShape(
                     positionInGroup,
