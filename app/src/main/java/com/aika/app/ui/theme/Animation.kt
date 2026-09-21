@@ -12,10 +12,10 @@ object AnimationTokens {
     const val Large = 300
 
     /**
-     * 新增项入场位移(dp):自下而上滑入。
-     * 深色下卡片色(surfaceContainerHigh)与面板色(surfaceContainer)亮度差仅约 4%,
-     * 面板色在 OLED 上视觉等同黑;单纯 alpha 淡入会被感知为"黑闪",
-     * 位移提供进入方向感,把淡入前段读作"正在浮入"。
+     * 进出场缩放端点(比例):新增项自该比例放大到 1,被点击项缩小到该比例后消失。
+     * 缩放是眼睛最敏感的进出信号(深色下卡片色与面板色亮度差仅约 4%,纯淡入几乎不可感知),
+     * 且缩放是原地动画、不依赖目标位置,因此可以先播完退场动画再提交数据,
+     * 让 LazyColumn 的滚动锚点不跟随移走的项跳动。
      */
-    const val AppearRiseDp = 12
+    const val ScaleEndpoint = 0.9f
 }

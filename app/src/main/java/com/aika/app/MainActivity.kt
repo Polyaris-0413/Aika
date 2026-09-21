@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -62,7 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -80,6 +78,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
@@ -112,20 +111,23 @@ fun TodoScreen() {
     val context = LocalContext.current
     val repository = remember { TaskRepository(context) }
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
 
-    // 点击视口第一项时该项会移走,LazyColumn 会跟随它跳到新位置:
-    // 记录点击前的 index/offset,tasks 更新后的测量前钉回(requestScrollToItem 会一并清掉锚点 key)。
-    // 必须等数据更新后才请求:提前请求会在数据变化前的那次测量就被消费掉,锚点 key 又被重记
-    var pendingScrollAnchor by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    // 正在退场的任务 id:点击后先播缩小淡出动画,再提交数据(见 toggleTask)
+    var exitingTaskIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
-    fun toggleTask(task: Task, indexInList: Int) {
-        if (indexInList == listState.firstVisibleItemIndex) {
-            pendingScrollAnchor =
-                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+    // 点击切换:先让卡片播完退场动画再写库。LazyColumn 的滚动锚点是"视口第一项",
+    // 该项直接移走会触发跟随跳到新位置;先"消失"再落位则不跟随(配合带状态前缀的 key),
+    // 同时也保住了退场动画(用 requestScrollToItem 那类跳转请求会吃掉 item 动画)
+    fun toggleTask(task: Task) {
+        if (task.id in exitingTaskIds) return
+        exitingTaskIds = exitingTaskIds + task.id
+        scope.launch {
+            delay(AnimationTokens.Medium.toLong())
+            repository.toggleTask(task)
+            exitingTaskIds = exitingTaskIds - task.id
         }
-        scope.launch { repository.toggleTask(task) }
     }
+
     // 已登记过出现的任务 id:首屏连屏幕外的溢出项一起先全部登记,
     // 因此冷启动与"滚动露出溢出项"都不播放入场;只有真正新增(新 id)的项才播放。
     // 不能用"是否已过首屏"的全局开关:LazyColumn 只组合可视项,溢出项在数据变化后
@@ -140,13 +142,6 @@ fun TodoScreen() {
                 firstEmission = false
             }
             tasks = list
-        }
-    }
-
-    LaunchedEffect(tasks) {
-        pendingScrollAnchor?.let { (index, offset) ->
-            listState.requestScrollToItem(index, offset)
-            pendingScrollAnchor = null
         }
     }
     // 旋转等配置变更会重建 Activity,remember 状态丢失;可恢复的 UI 状态一律 rememberSaveable
@@ -261,7 +256,6 @@ fun TodoScreen() {
             }
             } else {
                 LazyColumn(
-                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 8.dp,
@@ -271,7 +265,14 @@ fun TodoScreen() {
                 ),
                 verticalArrangement = Arrangement.spacedBy(groupItemSpacing)
             ) {
-                itemsIndexed(displayItems, key = { _, item -> item?.id ?: CompletedHeaderKey }) { index, item ->
+                itemsIndexed(
+                    displayItems,
+                    // key 带状态前缀:跨区移动后 LazyColumn 的滚动锚点(原第一项 key)在新列表里找不到,
+                    // 便不会跟随移走的项跳到新位置;跨区移动的视觉交给 TaskRow 的退场/入场动画
+                    key = { _, item ->
+                        item?.let { "${it.id}-${if (it.completed) "d" else "p"}" } ?: CompletedHeaderKey
+                    },
+                ) { index, item ->
                 if (item == null) {
                     Text(
                         text = stringResource(R.string.group_completed),
@@ -293,12 +294,13 @@ fun TodoScreen() {
                         groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
                         // 每个 id 只在首次组合时登记一次:已在集合内的(含滚动露出的溢出项)不播放入场
                         playAppear = seenTaskIds.add(item.id),
+                        exiting = item.id in exitingTaskIds,
                         modifier = Modifier.animateItem(
                             // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
                             fadeInSpec = null,
                             placementSpec = tween(AnimationTokens.Medium)
                         ),
-                        onToggle = { toggleTask(item, index) }
+                        onToggle = { toggleTask(item) }
                     )
                 }
             }
@@ -352,15 +354,21 @@ private fun TaskRow(
     positionInGroup: Int,
     groupCount: Int,
     playAppear: Boolean,
+    exiting: Boolean,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit
 ) {
-    // 入场:新增项自下方滑入并淡入(深色下面板色≈黑,单纯淡入会被感知为黑闪,位移给出进入方向)。
+    // 入场:新增项自 0.9 放大到 1 并淡入。
     // remember 在跨区移动的组合复用下保留,移动时不重播
     val appear = remember { Animatable(if (playAppear) 0f else 1f) }
-    val riseDistance = with(LocalDensity.current) { AnimationTokens.AppearRiseDp.dp.toPx() }
     LaunchedEffect(Unit) {
         if (playAppear) appear.animateTo(1f, tween(AnimationTokens.Large))
+    }
+
+    // 退场:点击后原地缩小并淡出,播完由调用方提交数据(TaskRow 会被 LazyColumn 回收,不能靠它提交)
+    val exit = remember { Animatable(0f) }
+    LaunchedEffect(exiting) {
+        if (exiting) exit.animateTo(1f, tween(AnimationTokens.Medium))
     }
 
     ListItem(
@@ -377,8 +385,14 @@ private fun TaskRow(
         colors = listItemColors(),
         modifier = modifier
             .graphicsLayer {
-                alpha = appear.value
-                translationY = (1f - appear.value) * riseDistance
+                // 进场自 0.9 放大、退场缩回 0.9;两段各自算完再相乘,避免互相干扰
+                val appearScale = AnimationTokens.ScaleEndpoint +
+                    (1f - AnimationTokens.ScaleEndpoint) * appear.value
+                val exitScale = 1f - (1f - AnimationTokens.ScaleEndpoint) * exit.value
+                val scale = appearScale * exitScale
+                scaleX = scale
+                scaleY = scale
+                alpha = appear.value * (1f - exit.value)
             }
             .clip(
                 animatedGroupItemShape(
@@ -387,7 +401,7 @@ private fun TaskRow(
                     tween(AnimationTokens.Medium)
                 )
             )
-            .clickable(onClick = onToggle)
+            .clickable(enabled = !exiting, onClick = onToggle)
     )
 }
 
