@@ -40,4 +40,13 @@ object AnimationTokens {
      * 会放大深色下的暗闪),故改用位移给进入感。
      */
     const val TitleRiseDp = 8
+
+    /**
+     * 分页切换(ms):与 book-story 的 FadeTransition 同源。
+     * 新页淡入 + 自 TabSwitchScaleFrom 放大,旧页单纯淡出。
+     */
+    const val TabSwitch = 250
+
+    /** 分页淡入的初始缩放(97.5% → 100%):纯淡入显得平,加一点"浮入"感 */
+    const val TabSwitchScaleFrom = 0.975f
 }

@@ -4,6 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -22,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.aika.app.ui.SettingsScreen
 import com.aika.app.ui.TodoScreen
 import com.aika.app.ui.theme.AikaTheme
+import com.aika.app.ui.theme.AnimationTokens
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,9 +86,22 @@ fun AikaApp() {
             }
         },
     ) { innerPadding ->
-        when (currentTab) {
-            AikaTab.Tasks -> TodoScreen(contentPadding = innerPadding)
-            AikaTab.Settings -> SettingsScreen(contentPadding = innerPadding)
+        AnimatedContent(
+            targetState = currentTab,
+            transitionSpec = {
+                // 与 book-story 的分页切换同源:新页淡入 + 自 97.5% 放大,旧页单纯淡出
+                (fadeIn(tween(AnimationTokens.TabSwitch)) +
+                    scaleIn(
+                        tween(AnimationTokens.TabSwitch),
+                        initialScale = AnimationTokens.TabSwitchScaleFrom,
+                    )) togetherWith fadeOut(tween(AnimationTokens.TabSwitch))
+            },
+            label = "tabSwitch",
+        ) { tab ->
+            when (tab) {
+                AikaTab.Tasks -> TodoScreen(contentPadding = innerPadding)
+                AikaTab.Settings -> SettingsScreen(contentPadding = innerPadding)
+            }
         }
     }
 }
