@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 深色下换用非 Light 的平台主题:否则 windowBackground 仍是浅色,
-         冷启动首帧会在深色用户眼前闪一下白(Compose 主题此时还没生效) -->
+    <!-- 深色的 Android 12+ 启动画面,理由同 values-v31/themes.xml -->
     <style name="Theme.Aika" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/window_background_dark</item>
+        <item name="android:windowSplashScreenBackground">@color/window_background_dark</item>
     </style>
 </resources>

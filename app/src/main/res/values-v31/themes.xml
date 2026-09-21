@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ 的启动画面(SplashScreen)。必须单独声明:该平台的
+         windowSplashScreenBackground 未指定时由系统决定,部分 ROM(实测 ColorOS)
+         会用自己的默认值(白色),于是深色冷启动会先闪一下白。
+         这里显式指向与 Compose 背景同色的资源,让"启动画面 → 首帧"无色差。 -->
+    <style name="Theme.Aika" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background_light</item>
+        <item name="android:windowSplashScreenBackground">@color/window_background_light</item>
+    </style>
+</resources>

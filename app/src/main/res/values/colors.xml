@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 启动窗口(windowBackground 与 Android 12+ 的 splash)的颜色。
+         必须与 Compose 侧 MaterialTheme.colorScheme.background 的取值一致,
+         否则窗口背景、启动画面、Compose 首帧三者之间会有可见的色差跳变。
+         取值来自 M3 默认配色的 background 角色值(见 ui/theme/Theme.kt 用的 darkColorScheme/lightColorScheme)。 -->
+    <color name="window_background_light">#FFFEF7FF</color>
+    <color name="window_background_dark">#FF141218</color>
+</resources>
