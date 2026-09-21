@@ -9,11 +9,12 @@ import androidx.compose.animation.core.spring
  * 同类动作用同一档;新增动画先查档位复用,没有合适档位才新增,避免数值散落。
  */
 object AnimationTokens {
-    /** 一般动效(ms):列表项位移与退场。取 M3 duration token 的 short4 */
-    const val Medium = 200
+    /** 一般动效(ms):列表项位移与退场。取 M3 duration token 的 medium1 */
+    const val Medium = 250
 
-    /** 内容出现(ms):列表项入场。取 M3 duration token 的 medium1 */
-    const val Large = 250
+    /** 内容出现(ms):「已完成」标题的淡入淡出等。取 M3 duration token 的 medium2。
+     *  列表项入场已改用 [appearSpring],不再受此值约束 */
+    const val Large = 300
 
     /**
      * 进出场缩放端点(比例):新增项自该比例放大到 1,被点击项缩小到该比例后消失。
