@@ -12,6 +12,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -58,8 +59,10 @@ private fun AikaApp() {
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar(
-                // 与内容面板同色(默认 surfaceContainer),并关掉默认的色调叠加 ——
-                // 否则会比面板亮一档,连不成一体。面板与底栏相连,只靠顶边圆角与顶栏底色区分
+                // 与内容面板同色。面板已改为 background(为分页切换的 scaleIn 让路,
+                // 否则缩小时会露出色差形成分块),底栏也跟着用 background,
+                // 否则会比面板亮一档、在底部形成一条色带
+                containerColor = MaterialTheme.colorScheme.background,
                 tonalElevation = 0.dp,
             ) {
                 NavigationBarItem(
