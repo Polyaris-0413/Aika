@@ -306,31 +306,32 @@ fun TodoScreen() {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .graphicsLayer {
-                                alpha = AnimationTokens.appearFade(appear.value)
+                                // 只做位移(纯变换);淡入交给 animateItem 的图层
                                 translationY = (1f - appear.value) * titleRise
                             }
                             .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
                             .animateItem(
-                                // 出现动画自管(滑入+淡入),此处 fadeIn 必须为 null;
-                                // 消失淡出用 Large 与淡入一致,免得退得比进得还急
-                                fadeInSpec = null,
+                                fadeInSpec = tween(AnimationTokens.Large),
                                 placementSpec = tween(AnimationTokens.Medium),
                                 fadeOutSpec = tween(AnimationTokens.Large)
                             )
                     )
                 } else {
+                    // 每个 id 只在首次组合时登记一次:已在集合内的(含滚动露出的溢出项)不播放入场
+                    val playAppear = seenTaskIds.add(item.id) ||
+                        taskRegions.put(item.id, item.completed) != item.completed
                     TaskRow(
                         task = item,
                         positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
                         groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
-                        // 每个 id 只在首次组合时登记一次:已在集合内的(含滚动露出的溢出项)不播放入场
-                        playAppear = seenTaskIds.add(item.id) ||
-                            taskRegions.put(item.id, item.completed) != item.completed,
+                        playAppear = playAppear,
                         exiting = item.id in exitingTaskIds,
                         modifier = Modifier.animateItem(
-                            // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
-                            fadeInSpec = null,
-                            placementSpec = tween(AnimationTokens.Medium)
+                            // 淡入淡出交给 LazyColumn:与自管的缩放分处不同图层 ——
+                            // 同一图层同时变 alpha 与 scale 时该项会泛绿(本机渲染路径问题,实测稳定复现)
+                            fadeInSpec = if (playAppear) tween(AnimationTokens.Large) else null,
+                            placementSpec = tween(AnimationTokens.Medium),
+                            fadeOutSpec = tween(AnimationTokens.Medium)
                         ),
                         onToggle = { toggleTask(item) }
                     )
@@ -390,14 +391,21 @@ private fun TaskRow(
     modifier: Modifier = Modifier,
     onToggle: () -> Unit
 ) {
-    // 入场:新增项自 0.9 放大到 1 并淡入。
+    // 这里只驱动缩放:淡入淡出交给调用处的 animateItem —— 同一图层同时变 alpha 与 scale 时,
+    // 该项会泛绿(本机渲染路径问题,实测稳定复现),拆到两个图层即可规避。
+    // 缩放带 delayMillis 滞后半个淡入时长启动:否则"从无到有"会盖过约 10% 的尺寸变化,看不出放大。
     // remember 在跨区移动的组合复用下保留,移动时不重播
     val appear = remember { Animatable(if (playAppear) 0f else 1f) }
     LaunchedEffect(Unit) {
-        if (playAppear) appear.animateTo(1f, tween(AnimationTokens.Large))
+        if (playAppear) {
+            appear.animateTo(
+                1f,
+                tween(AnimationTokens.Large, delayMillis = AnimationTokens.Large / 2),
+            )
+        }
     }
 
-    // 退场:点击后原地缩小并淡出,播完由调用方提交数据(TaskRow 会被 LazyColumn 回收,不能靠它提交)
+    // 退场只做缩小:淡出交给 animateItem 的 fadeOutSpec(数据提交后由 LazyColumn 接着播)
     val exit = remember { Animatable(0f) }
     LaunchedEffect(exiting) {
         if (exiting) exit.animateTo(1f, tween(AnimationTokens.Medium))
@@ -417,15 +425,13 @@ private fun TaskRow(
         colors = listItemColors(),
         modifier = modifier
             .graphicsLayer {
-                // 进场分两段:先淡入到位、再放大(同步时看不出放大,见 AppearFadeFraction 注释);
-                // 退场则与原尺寸一起缩小并淡出
-                val appearGrow = AnimationTokens.appearGrow(appear.value)
+                // 只有缩放(纯变换)。入场时动画带 delay,前半个时长不放大(此段只淡入),
+                // 后半段才长大;退场与原尺寸一起缩小
                 val scale = (AnimationTokens.ScaleEndpoint +
-                    (1f - AnimationTokens.ScaleEndpoint) * appearGrow) *
+                    (1f - AnimationTokens.ScaleEndpoint) * appear.value) *
                     (1f - (1f - AnimationTokens.ScaleEndpoint) * exit.value)
                 scaleX = scale
                 scaleY = scale
-                alpha = AnimationTokens.appearFade(appear.value) * (1f - exit.value)
             }
             .clip(
                 animatedGroupItemShape(
