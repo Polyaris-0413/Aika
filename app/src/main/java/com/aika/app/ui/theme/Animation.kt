@@ -18,4 +18,11 @@ object AnimationTokens {
      * 让 LazyColumn 的滚动锚点不跟随移走的项跳动。
      */
     const val ScaleEndpoint = 0.9f
+
+    /**
+     * 入场阶段划分:前该比例只做淡入,剩余比例只做缩放。
+     * 两段必须分开:与 alpha 同步时,"从无到有"会盖过约 10% 的尺寸变化,肉眼看不出放大
+     * (退场能看到缩小,是因为卡片起初就是完全可见的大卡片)。
+     */
+    const val AppearFadeFraction = 0.4f
 }

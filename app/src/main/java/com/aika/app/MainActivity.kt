@@ -128,6 +128,7 @@ fun TodoScreen() {
         }
     }
 
+
     // 已登记过出现的任务 id:首屏连屏幕外的溢出项一起先全部登记,
     // 因此冷启动与"滚动露出溢出项"都不播放入场;只有真正新增(新 id)的项才播放。
     // 不能用"是否已过首屏"的全局开关:LazyColumn 只组合可视项,溢出项在数据变化后
@@ -385,14 +386,17 @@ private fun TaskRow(
         colors = listItemColors(),
         modifier = modifier
             .graphicsLayer {
-                // 进场自 0.9 放大、退场缩回 0.9;两段各自算完再相乘,避免互相干扰
-                val appearScale = AnimationTokens.ScaleEndpoint +
-                    (1f - AnimationTokens.ScaleEndpoint) * appear.value
-                val exitScale = 1f - (1f - AnimationTokens.ScaleEndpoint) * exit.value
-                val scale = appearScale * exitScale
+                // 进场分两段:先淡入到位、再放大(同步时看不出放大,见 AppearFadeFraction 注释);
+                // 退场则与原尺寸一起缩小并淡出
+                val appearFade = (appear.value / AnimationTokens.AppearFadeFraction).coerceAtMost(1f)
+                val appearGrow = ((appear.value - AnimationTokens.AppearFadeFraction) /
+                    (1f - AnimationTokens.AppearFadeFraction)).coerceIn(0f, 1f)
+                val scale = (AnimationTokens.ScaleEndpoint +
+                    (1f - AnimationTokens.ScaleEndpoint) * appearGrow) *
+                    (1f - (1f - AnimationTokens.ScaleEndpoint) * exit.value)
                 scaleX = scale
                 scaleY = scale
-                alpha = appear.value * (1f - exit.value)
+                alpha = appearFade * (1f - exit.value)
             }
             .clip(
                 animatedGroupItemShape(
