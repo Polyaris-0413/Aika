@@ -25,4 +25,12 @@ object AnimationTokens {
      * (退场能看到缩小,是因为卡片起初就是完全可见的大卡片)。
      */
     const val AppearFadeFraction = 0.4f
+
+    /** 入场进度 → 淡入进度:前 AppearFadeFraction 段先淡入到位 */
+    fun appearFade(progress: Float): Float =
+        (progress / AppearFadeFraction).coerceAtMost(1f)
+
+    /** 入场进度 → 缩放进度:与 [appearFade] 互补的后半段,此时元素已完全可见 */
+    fun appearGrow(progress: Float): Float =
+        ((progress - AppearFadeFraction) / (1f - AppearFadeFraction)).coerceIn(0f, 1f)
 }

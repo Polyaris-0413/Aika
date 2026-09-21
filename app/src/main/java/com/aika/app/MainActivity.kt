@@ -137,15 +137,23 @@ fun TodoScreen() {
     // 各任务上次所在分区:跨区移动要在新位置播放入场,
     // 而 put 返回旧值,只有分区真的变了才是 true —— 溢出项滚入视口、滚动回收重建都不会重播
     val taskRegions = remember { mutableMapOf<Long, Boolean>() }
+    // 「已完成」标题的入场:只在"已完成区从空变非空"的那次数据变化后播一次,
+    // 标题被滚动回收重建时不重播(标志在下一次数据变化时被重新赋为 false)
+    var headerJustAppeared by remember { mutableStateOf(false) }
     var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
     LaunchedEffect(Unit) {
         var firstEmission = true
+        var prevDoneEmpty = true
         repository.tasks.collect { list ->
+            val doneEmpty = list.none { it.completed }
             if (firstEmission) {
                 seenTaskIds.addAll(list.map { it.id })
                 list.forEach { taskRegions[it.id] = it.completed }
                 firstEmission = false
+            } else {
+                headerJustAppeared = !doneEmpty && prevDoneEmpty
             }
+            prevDoneEmpty = doneEmpty
             tasks = list
         }
     }
@@ -279,16 +287,34 @@ fun TodoScreen() {
                     },
                 ) { index, item ->
                 if (item == null) {
+                    // 「已完成」标题:与卡片同一动画语言(前段先淡入到位、后段放大),
+                    // 只在首次出现时播放;消失由 animateItem 的 fadeOut 负责
+                    val appear = remember { Animatable(if (headerJustAppeared) 0f else 1f) }
+                    LaunchedEffect(Unit) {
+                        if (headerJustAppeared) {
+                            appear.animateTo(1f, tween(AnimationTokens.Large))
+                        }
+                    }
                     Text(
                         text = stringResource(R.string.group_completed),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
+                            // 占满整行:缩放中心才是列表中心。否则项只有文字那么宽,
+                            // 缩放中心就在文字中间,10% 的缩放只让文字边缘动约 8px,看不出放大
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                val grow = AnimationTokens.appearGrow(appear.value)
+                                val scale = AnimationTokens.ScaleEndpoint +
+                                    (1f - AnimationTokens.ScaleEndpoint) * grow
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = AnimationTokens.appearFade(appear.value)
+                            }
                             .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
                             .animateItem(
-                                // 标题是亮色文字,与"卡片底≈面板色"不同,淡入对比明显(当年禁用它
-                                // 是为规避整卡淡入的黑闪,现卡片已改为缩放进出);消失淡出保留
-                                fadeInSpec = tween(AnimationTokens.Large),
+                                // 出现动画自管(与卡片同:先淡入后放大),此处 fadeIn 必须为 null;消失淡出保留
+                                fadeInSpec = null,
                                 placementSpec = tween(AnimationTokens.Medium),
                                 fadeOutSpec = tween(AnimationTokens.Medium)
                             )
@@ -394,15 +420,13 @@ private fun TaskRow(
             .graphicsLayer {
                 // 进场分两段:先淡入到位、再放大(同步时看不出放大,见 AppearFadeFraction 注释);
                 // 退场则与原尺寸一起缩小并淡出
-                val appearFade = (appear.value / AnimationTokens.AppearFadeFraction).coerceAtMost(1f)
-                val appearGrow = ((appear.value - AnimationTokens.AppearFadeFraction) /
-                    (1f - AnimationTokens.AppearFadeFraction)).coerceIn(0f, 1f)
+                val appearGrow = AnimationTokens.appearGrow(appear.value)
                 val scale = (AnimationTokens.ScaleEndpoint +
                     (1f - AnimationTokens.ScaleEndpoint) * appearGrow) *
                     (1f - (1f - AnimationTokens.ScaleEndpoint) * exit.value)
                 scaleX = scale
                 scaleY = scale
-                alpha = appearFade * (1f - exit.value)
+                alpha = AnimationTokens.appearFade(appear.value) * (1f - exit.value)
             }
             .clip(
                 animatedGroupItemShape(
