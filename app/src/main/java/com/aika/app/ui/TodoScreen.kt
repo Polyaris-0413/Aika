@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.aika.app.R
 import com.aika.app.data.Task
@@ -68,6 +69,9 @@ import com.aika.app.ui.components.groupTitleSpacing
 import com.aika.app.ui.components.listItemColors
 import com.aika.app.ui.theme.AikaTheme
 import com.aika.app.ui.theme.AnimationTokens
+import com.aika.app.ui.theme.EmphasizedAccelerate
+import com.aika.app.ui.theme.EmphasizedDecelerate
+import com.aika.app.ui.theme.EmphasizedEasing
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,7 +97,7 @@ fun TodoScreen(contentPadding: PaddingValues) {
         scope.launch {
             // 等退场动画整段播完再提交:提前提交会把自管的缩小/淡出半途切断,
             // 该项在动画中途被移出组合,深色下表现为它的轮廓闪一下(实测反馈)
-            delay(AnimationTokens.Medium.toLong())
+            delay(AnimationTokens.ExitPermanent.toLong())
             repository.toggleTask(task)
             exitingTaskIds = exitingTaskIds - task.id
         }
@@ -207,7 +211,8 @@ fun TodoScreen(contentPadding: PaddingValues) {
                         EnterTransition.None togetherWith ExitTransition.None
                     } else {
                         // 首个待办出现:仅占位淡出;列表直出不淡入(黑闪),占位居下层不拦截点击
-                        EnterTransition.None togetherWith fadeOut(tween(AnimationTokens.Large))
+                        EnterTransition.None togetherWith
+                            fadeOut(tween(AnimationTokens.ExitTemporary, easing = EmphasizedEasing))
                     }
                 },
                 label = "emptyState"
@@ -242,7 +247,13 @@ fun TodoScreen(contentPadding: PaddingValues) {
                                 val appear = remember { Animatable(if (headerJustAppeared) 0f else 1f) }
                                 LaunchedEffect(Unit) {
                                     if (headerJustAppeared) {
-                                        appear.animateTo(1f, tween(AnimationTokens.Large))
+                                        appear.animateTo(
+                                            1f,
+                                            tween(
+                                                AnimationTokens.EnterScreen,
+                                                easing = EmphasizedDecelerate,
+                                            ),
+                                        )
                                     }
                                 }
                                 val titleRise =
@@ -259,10 +270,15 @@ fun TodoScreen(contentPadding: PaddingValues) {
                                         .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
                                         .animateItem(
                                             // 出现动画自管(滑入+淡入),此处 fadeIn 必须为 null;
-                                            // 消失淡出用 Large 与淡入一致,免得退得比进得还急
+                                            // 消失淡出用 ExitTemporary 与淡入一致,免得退得比进得还急
                                             fadeInSpec = null,
-                                            placementSpec = tween(AnimationTokens.Medium),
-                                            fadeOutSpec = tween(AnimationTokens.Large),
+                                            // 位置变化属 spatial,按官方用 spring;
+                                            // fadeOutSpec 是 effets 类(透明度),仍走 tween
+                                            placementSpec = AnimationTokens.spatialSpring(),
+                                            fadeOutSpec = tween(
+                                                AnimationTokens.ExitTemporary,
+                                                easing = EmphasizedEasing,
+                                            ),
                                         )
                                 )
                             } else {
@@ -277,7 +293,8 @@ fun TodoScreen(contentPadding: PaddingValues) {
                                     modifier = Modifier.animateItem(
                                         // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
                                         fadeInSpec = null,
-                                        placementSpec = tween(AnimationTokens.Medium),
+                                        // 跨区移动是位置变化(spatial),按官方用 spring
+                                        placementSpec = AnimationTokens.spatialSpring(),
                                     ),
                                     onToggle = { toggleTask(item) },
                                 )
@@ -316,16 +333,17 @@ private fun AnimatedCounter(count: Int?) {
                     SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> snap() }),
                 )
             } else {
+                // 数字停留屏上时的交接:官方建议 Emphasized;时长沿用 medium1
+                // (官方配 500ms,对数字滚动偏慢,只取其 easing)。
+                // 位移与透明度是两类 spec(slide 收 IntOffset、fade 收 Float),各取一份
+                val counterAlpha = tween<Float>(AnimationTokens.Medium, easing = EmphasizedEasing)
+                val counterSlide = tween<IntOffset>(AnimationTokens.Medium, easing = EmphasizedEasing)
                 val slide = if (to > from) {
-                    (slideInVertically(tween(AnimationTokens.Medium)) { it } +
-                        fadeIn(tween(AnimationTokens.Medium))) togetherWith
-                        (slideOutVertically(tween(AnimationTokens.Medium)) { -it } +
-                            fadeOut(tween(AnimationTokens.Medium)))
+                    (slideInVertically(counterSlide) { it } + fadeIn(counterAlpha)) togetherWith
+                        (slideOutVertically(counterSlide) { -it } + fadeOut(counterAlpha))
                 } else {
-                    (slideInVertically(tween(AnimationTokens.Medium)) { -it } +
-                        fadeIn(tween(AnimationTokens.Medium))) togetherWith
-                        (slideOutVertically(tween(AnimationTokens.Medium)) { it } +
-                            fadeOut(tween(AnimationTokens.Medium)))
+                    (slideInVertically(counterSlide) { -it } + fadeIn(counterAlpha)) togetherWith
+                        (slideOutVertically(counterSlide) { it } + fadeOut(counterAlpha))
                 }
                 // using 必须作用于整个 if-else:跟在同一分支的闭括号后面只会生效于那一支
                 slide.using(SizeTransform(clip = false))
@@ -398,17 +416,24 @@ private fun TaskRow(
     // 入场:新增项自 0.9 放大到 1 并淡入。
     // remember 在跨区移动的组合复用下保留,移动时不重播
     val appear = remember { Animatable(if (playAppear) 0f else 1f) }
-    // 入场用 spring(带回弹):匀速/减速停住会显得拖,过冲一下才显得"至"。
-    // 退场仍用固定时长 tween —— M3 规范里 spring 用于组件动画,进/退场转场走 easing/duration
-    val appearSpec = AnimationTokens.appearSpring()
+    // 入场用 spatial spring(位置/尺寸类都走它):数值为官方 motionSpringDefaultSpatial。
+    // 退场相反,用固定时长 + 官方退场曲线(加速离开),见下
+    val appearSpec = AnimationTokens.spatialSpring<Float>()
     LaunchedEffect(Unit) {
         if (playAppear) appear.animateTo(1f, appearSpec)
     }
 
-    // 退场:点击后原地缩小并淡出,播完由调用方提交数据(TaskRow 会被 LazyColumn 回收,不能靠它提交)
+    // 退场:点击后原地缩小并淡出,播完由调用方提交数据(TaskRow 会被 LazyColumn 回收,不能靠它提交)。
+    // 时长与曲线取官方的 Element exits permanently(Emphasized Accelerate 200ms),
+    // 即"加速离开",与入场的减速收住形成对比
     val exit = remember { Animatable(0f) }
     LaunchedEffect(exiting) {
-        if (exiting) exit.animateTo(1f, tween(AnimationTokens.Medium))
+        if (exiting) {
+            exit.animateTo(
+                1f,
+                tween(AnimationTokens.ExitPermanent, easing = EmphasizedAccelerate),
+            )
+        }
     }
 
     ListItem(
@@ -439,7 +464,8 @@ private fun TaskRow(
                 animatedGroupItemShape(
                     positionInGroup,
                     groupCount,
-                    tween(AnimationTokens.Medium)
+                    // 圆角变化属于 shape(spatial),按官方用 spring
+                    AnimationTokens.spatialSpring(),
                 )
             )
             .clickable(enabled = !exiting, onClick = onToggle)

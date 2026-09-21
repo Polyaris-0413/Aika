@@ -1,19 +1,54 @@
 package com.aika.app.ui.theme
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.spring
+
+/*
+ * M3 的 easing 曲线,取自官方 motion token(与 material-3 技能文档里的
+ * --md-sys-motion-easing-* 同值)。MDC 对 Emphasized 另给出一段等价的 path 写法,
+ * 这里统一用三次贝塞尔:Compose 原生支持,且六条形式一致。
+ *
+ * Emphasized 与 Standard 的"首尾"曲线数值相同,仍分开命名:语义不同,日后可独立调整。
+ */
+val EmphasizedEasing: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+val EmphasizedDecelerate: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+val EmphasizedAccelerate: Easing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
+val StandardEasing: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+val StandardDecelerate: Easing = CubicBezierEasing(0f, 0f, 0f, 1f)
+val StandardAccelerate: Easing = CubicBezierEasing(0.3f, 0f, 1f, 1f)
 
 /**
  * 全局动画数值(时长 + 缓动),分档管理,与 Folio 的 AnimationTokens 同源:
  * 同类动作用同一档;新增动画先查档位复用,没有合适档位才新增,避免数值散落。
+ *
+ * 时长与 easing 的配对采用 M3 官方的 Suggested Pairings
+ * (见 material-3 技能的 typography-and-shape.md):
+ *   进入屏幕       Emphasized Decelerate  400ms
+ *   永久退场       Emphasized Accelerate  200ms
+ *   暂时退场       Emphasized             300ms
+ *   小工具类过渡   Standard               300ms
+ * 官方未给配对的动作(如统计数字滚动)沿用 M3 duration token 的档位。
  */
 object AnimationTokens {
-    /** 一般动效(ms):列表项位移与退场。取 M3 duration token 的 medium1 */
+    /** 一般动效(ms):统计数字滚动等,官方无专门配对。取 M3 duration token 的 medium1 */
     const val Medium = 250
 
-    /** 内容出现(ms):「已完成」标题的淡入淡出等。取 M3 duration token 的 medium2。
-     *  列表项入场已改用 [appearSpring],不再受此值约束 */
-    const val Large = 300
+    /** 进入屏幕(ms):「已完成」标题入场。官方 Element enters screen */
+    const val EnterScreen = 400
+
+    /** 暂时退场(ms):标题消失、空状态占位淡出。官方 Element exits temporarily */
+    const val ExitTemporary = 300
+
+    /** 永久退场(ms):卡片被点击后缩小消失。官方 Element exits permanently */
+    const val ExitPermanent = 200
+
+    /** 分页切换(ms):官方 Small utility transition */
+    const val TabSwitch = 300
+
+    /** 分页淡入的初始缩放(97.5% → 100%):纯淡入显得平,加一点"浮入"感 */
+    const val TabSwitchScaleFrom = 0.975f
 
     /**
      * 进出场缩放端点(比例):新增项自该比例放大到 1,被点击项缩小到该比例后消失。
@@ -37,10 +72,9 @@ object AnimationTokens {
         (progress / AppearFadeFraction).coerceAtMost(1f)
 
     /**
-     * 入场缩放允许透出的过冲上限。expressive 的 spring 到位前会冲过目标值,
-     * 若这里夹到 1,回弹会被抹掉、缩放准确地停在 1.0(等于白用 spring)。
-     *
-     * 0.2 为项目自定值(非官方),只需大于 spring 的实际过冲(当前阻尼比 0.65 约 7%)。
+     * 入场缩放允许透出的过冲上限(项目自定值,M3 无对应 token)。
+     * spring 到位前会冲过目标值,若这里夹到 1,回弹会被抹掉、缩放准确地停在 1.0。
+     * 当前 spatial spring 的阻尼比为官方值 0.9(过冲仅约 0.15%),实际用不到这个上限。
      */
     const val AppearOvershoot = 0.2f
 
@@ -53,23 +87,16 @@ object AnimationTokens {
             .coerceIn(0f, 1f + AppearOvershoot)
 
     /**
-     * 列表项入场的弹性规格。
+     * spatial spring:用于位置、尺寸、形状等"在屏幕上动"的属性。
+     * 数值取官方 motionSpringDefaultSpatial(damping 0.9 / stiffness 700)——
+     * MDC 原文:"小件用 fast spring,全屏用 slow spring,介于两者之间的用 default",
+     * 列表项正属此类。
      *
-     * M3 Expressive 把动画按域拆开:位置/尺寸/缩放走 spring(可以过冲、再收住),
-     * 透明度/颜色走 tween(可预测、不过冲)。这里只给缩放用,淡入仍由 [appearFade] 按 tween 语义派生。
-     *
-     * 关于取值:Material 官方只在 MDC 侧公开了 spring 数值(motionSpring* 六组,
-     * 见 material-components-android/docs/theming/Motion.md),其 damping 一律 0.9 ——
-     * 对应过冲仅约 0.15%,基本不回弹。本项目要的是有感的回弹(深色下纯淡入/纯缩放
-     * 显得板),所以有意偏离官方:阻尼取 0.65(过冲约 7%)。
-     *
-     * Compose 侧的官方值拿不到 —— 当前 material3 版本里 MotionScheme 仍是 internal。
-     * stiffness 决定到达目标的速度(不影响回弹幅度),取 700 ——
-     * 即官方 motionSpringDefaultSpatial 的值。MDC 原文:介于"小组件"与"全屏"
-     * 之间的用 default,列表项正属此类。Compose 没有 700 这个命名档,故直接给数值。
+     * 官方的 effects spring(damping 1)不在此实现:透明度与颜色在本项目走 tween,
+     * 官方也正是这么配的(Effects springs 用于"不应过冲"的属性,如 alpha)。
      */
-    fun appearSpring(): FiniteAnimationSpec<Float> = spring(
-        dampingRatio = 0.65f,
+    fun <T> spatialSpring(): FiniteAnimationSpec<T> = spring(
+        dampingRatio = 0.9f,
         stiffness = 700f,
     )
 
@@ -79,13 +106,4 @@ object AnimationTokens {
      * 会放大深色下的暗闪),故改用位移给进入感。
      */
     const val TitleRiseDp = 8
-
-    /**
-     * 分页切换(ms):与 book-story 的 FadeTransition 同源。
-     * 新页淡入 + 自 TabSwitchScaleFrom 放大,旧页单纯淡出。
-     */
-    const val TabSwitch = 250
-
-    /** 分页淡入的初始缩放(97.5% → 100%):纯淡入显得平,加一点"浮入"感 */
-    const val TabSwitchScaleFrom = 0.975f
 }
