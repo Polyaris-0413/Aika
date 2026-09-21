@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -111,6 +112,20 @@ fun TodoScreen() {
     val context = LocalContext.current
     val repository = remember { TaskRepository(context) }
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+
+    // 点击视口第一项时该项会移走,LazyColumn 会跟随它跳到新位置:
+    // 记录点击前的 index/offset,tasks 更新后的测量前钉回(requestScrollToItem 会一并清掉锚点 key)。
+    // 必须等数据更新后才请求:提前请求会在数据变化前的那次测量就被消费掉,锚点 key 又被重记
+    var pendingScrollAnchor by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    fun toggleTask(task: Task, indexInList: Int) {
+        if (indexInList == listState.firstVisibleItemIndex) {
+            pendingScrollAnchor =
+                listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+        }
+        scope.launch { repository.toggleTask(task) }
+    }
     // 已登记过出现的任务 id:首屏连屏幕外的溢出项一起先全部登记,
     // 因此冷启动与"滚动露出溢出项"都不播放入场;只有真正新增(新 id)的项才播放。
     // 不能用"是否已过首屏"的全局开关:LazyColumn 只组合可视项,溢出项在数据变化后
@@ -125,6 +140,13 @@ fun TodoScreen() {
                 firstEmission = false
             }
             tasks = list
+        }
+    }
+
+    LaunchedEffect(tasks) {
+        pendingScrollAnchor?.let { (index, offset) ->
+            listState.requestScrollToItem(index, offset)
+            pendingScrollAnchor = null
         }
     }
     // 旋转等配置变更会重建 Activity,remember 状态丢失;可恢复的 UI 状态一律 rememberSaveable
@@ -239,6 +261,7 @@ fun TodoScreen() {
             }
             } else {
                 LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 8.dp,
@@ -275,7 +298,7 @@ fun TodoScreen() {
                             fadeInSpec = null,
                             placementSpec = tween(AnimationTokens.Medium)
                         ),
-                        onToggle = { scope.launch { repository.toggleTask(item) } }
+                        onToggle = { toggleTask(item, index) }
                     )
                 }
             }
