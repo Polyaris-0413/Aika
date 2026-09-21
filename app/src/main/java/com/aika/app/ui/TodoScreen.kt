@@ -259,7 +259,7 @@ fun TodoScreen(contentPadding: PaddingValues) {
                                     }
                                 }
                                 val titleRise =
-                                    with(LocalDensity.current) { AnimationTokens.RiseDp.dp.toPx() }
+                                    with(LocalDensity.current) { AnimationTokens.TitleRiseDp.dp.toPx() }
                                 Text(
                                     text = stringResource(R.string.group_completed),
                                     style = MaterialTheme.typography.labelLarge,
@@ -452,12 +452,14 @@ private fun TaskRow(
         colors = listItemColors(),
         modifier = modifier
             .graphicsLayer {
-                // 进场分两段:先淡入到位、再位移(同步时看不出移动,见 AppearFadeFraction 注释);
-                // 退场则向同一方向继续滑出并淡出。
-                // 用位移而非缩放:卡片比背景亮,缩放时四周会露出暗背景(见 RiseDp 注释)
+                // 进场分两段:先淡入到位、再放大(同步时看不出放大,见 AppearFadeFraction 注释);
+                // 退场则与原尺寸一起缩小并淡出
                 val appearGrow = AnimationTokens.appearGrow(appear.value)
-                val rise = AnimationTokens.RiseDp.dp.toPx()
-                translationY = (1f - appearGrow) * rise - exit.value * rise
+                val scale = (AnimationTokens.ScaleEndpoint +
+                    (1f - AnimationTokens.ScaleEndpoint) * appearGrow) *
+                    (1f - (1f - AnimationTokens.ScaleEndpoint) * exit.value)
+                scaleX = scale
+                scaleY = scale
                 alpha = AnimationTokens.appearFade(appear.value) * (1f - exit.value)
             }
             .clip(

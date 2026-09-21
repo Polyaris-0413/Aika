@@ -51,8 +51,19 @@ object AnimationTokens {
     const val TabSwitchScaleFrom = 0.975f
 
     /**
-     * 入场阶段划分:前该比例只做淡入,剩余比例才做位移。
-     * 两段必须分开:与 alpha 同步时,"从无到有"会盖过位置变化,肉眼看不出来。
+     * 进出场缩放端点(比例):新增项自该比例放大到 1,被点击项缩小到该比例后消失。
+     * 越接近 1 变化幅度越小。
+     *
+     * 缩放是眼睛最敏感的进出信号(深色下卡片色与面板色亮度差仅约 4%,纯淡入几乎不可感知),
+     * 且缩放是原地动画、不依赖目标位置,因此可以先播完退场动画再提交数据,
+     * 让 LazyColumn 的滚动锚点不跟随移走的项跳动。
+     */
+    const val ScaleEndpoint = 0.95f
+
+    /**
+     * 入场阶段划分:前该比例只做淡入,剩余比例只做缩放。
+     * 两段必须分开:与 alpha 同步时,"从无到有"会盖过约 10% 的尺寸变化,肉眼看不出放大
+     * (退场能看到缩小,是因为卡片起初就是完全可见的大卡片)。
      */
     const val AppearFadeFraction = 0.4f
 
@@ -61,15 +72,15 @@ object AnimationTokens {
         (progress / AppearFadeFraction).coerceAtMost(1f)
 
     /**
-     * 入场位移允许透出的过冲上限(项目自定值,M3 无对应 token)。
-     * spring 到位前会冲过目标值(即越过原位再回来),若这里夹到 1,过冲会被抹掉。
+     * 入场缩放允许透出的过冲上限(项目自定值,M3 无对应 token)。
+     * spring 到位前会冲过目标值,若这里夹到 1,回弹会被抹掉、缩放准确地停在 1.0。
      * 当前 spatial spring 的阻尼比为官方值 0.9(过冲仅约 0.15%),实际用不到这个上限。
      */
     const val AppearOvershoot = 0.2f
 
     /**
-     * 入场进度 → 位移进度:与 [appearFade] 互补的后半段,此时元素已完全可见。
-     * 上限为 1 + [AppearOvershoot],让 spring 的过冲能反映到位移上。
+     * 入场进度 → 缩放进度:与 [appearFade] 互补的后半段,此时元素已完全可见。
+     * 上限为 1 + [AppearOvershoot],让 spring 的过冲能反映到缩放上。
      */
     fun appearGrow(progress: Float): Float =
         ((progress - AppearFadeFraction) / (1f - AppearFadeFraction))
@@ -90,11 +101,9 @@ object AnimationTokens {
     )
 
     /**
-     * 出入场的位移距离(dp):「已完成」标题与列表项共用。
-     *
-     * 用位移而不用缩放:卡片色比背景亮,缩放时四周会露出更暗的背景、形成一圈暗边
-     * (与分页切换整页 scaleIn 时出现竖向分块是同一原理,放大缩水幅度后已实测重现)。
-     * 位移不改变布局尺寸,同样不依赖"目标位置",因此"先播完退场动画再提交数据"仍然成立。
+     * 「已完成」标题入场的上滑距离(dp):标题是纯文字,不适合用缩放做进入
+     * (缩放要项占满整行才看得见,而整行大的项参与 LazyColumn 的图层动画
+     * 会放大深色下的暗闪),故改用位移给进入感。
      */
-    const val RiseDp = 8
+    const val TitleRiseDp = 8
 }
