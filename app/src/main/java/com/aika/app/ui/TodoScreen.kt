@@ -192,17 +192,15 @@ fun TodoScreen(contentPadding: PaddingValues) {
                 )
             }
         }
-        // 面板始终显示(空态时承载居中占位),层级结构与有任务时保持一致。
-        // 底色与页面背景同色:分页切换时新页会整体缩放(scaleIn),若面板比背景亮,
-        // 缩小时四周会露出下面的暗背景,呈现"中间亮、边上暗"的竖向分块(实测稳定复现)。
-        // 代价是面板与背景不再有色差、顶部圆角随之不可见 —— 这是为切换动画让路。
-        // 列表卡片自身用 surfaceContainerHigh,仍与背景有层次,不受影响
+        // 面板始终显示(空态时承载居中占位),层级结构与有任务时保持一致
         Surface(
-            color = MaterialTheme.colorScheme.background,
+            color = MaterialTheme.colorScheme.surfaceContainer,
             // 只有上边圆角:面板从底栏升起,底边与底栏同在屏幕下沿
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             modifier = Modifier
                 .fillMaxSize()
+                // 面板直接接底栏:两者底色不同(面板 surfaceContainer / 底栏 background),
+                // 四角圆角靠这层色差衬托,不再需要额外的底色边
                 .padding(bottom = contentPadding.calculateBottomPadding())
         ) {
             AnimatedContent(
