@@ -124,9 +124,9 @@ fun TodoScreen() {
         if (task.id in exitingTaskIds) return
         exitingTaskIds = exitingTaskIds + task.id
         scope.launch {
-            // 只等退场动画的前大半程就提交:余下的尾程与入场动画重叠,
-            // 否则旧项彻底消失后新内容才开始,两项动画脱节(一顿一等)
-            delay((AnimationTokens.Medium * AnimationTokens.ExitCommitFraction).toLong())
+            // 等退场动画整段播完再提交:提前提交会把自管的缩小/淡出半途切断,
+            // 该项在动画中途被移出组合,深色下表现为它的轮廓闪一下(实测反馈)
+            delay(AnimationTokens.Medium.toLong())
             repository.toggleTask(task)
             exitingTaskIds = exitingTaskIds - task.id
         }
