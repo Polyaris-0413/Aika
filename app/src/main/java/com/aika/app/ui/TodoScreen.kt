@@ -6,6 +6,7 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -308,22 +309,27 @@ private fun AnimatedCounter(count: Int?) {
         transitionSpec = {
             val from = initialState
             val to = targetState
-            val slide = if (from == null || to == null) {
-                // 数据落位,不是数量变化
-                EnterTransition.None togetherWith ExitTransition.None
-            } else if (to > from) {
-                (slideInVertically(tween(AnimationTokens.Medium)) { it } +
-                    fadeIn(tween(AnimationTokens.Medium))) togetherWith
-                    (slideOutVertically(tween(AnimationTokens.Medium)) { -it } +
-                        fadeOut(tween(AnimationTokens.Medium)))
+            if (from == null || to == null) {
+                // 数据落位,不是数量变化:内容与容器尺寸都必须瞬时到位。
+                // 否则容器宽度会从占位数字的宽度动画到真值,分隔符先被挤在错位置再滑回来
+                (EnterTransition.None togetherWith ExitTransition.None).using(
+                    SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> snap() }),
+                )
             } else {
-                (slideInVertically(tween(AnimationTokens.Medium)) { -it } +
-                    fadeIn(tween(AnimationTokens.Medium))) togetherWith
-                    (slideOutVertically(tween(AnimationTokens.Medium)) { it } +
-                        fadeOut(tween(AnimationTokens.Medium)))
+                val slide = if (to > from) {
+                    (slideInVertically(tween(AnimationTokens.Medium)) { it } +
+                        fadeIn(tween(AnimationTokens.Medium))) togetherWith
+                        (slideOutVertically(tween(AnimationTokens.Medium)) { -it } +
+                            fadeOut(tween(AnimationTokens.Medium)))
+                } else {
+                    (slideInVertically(tween(AnimationTokens.Medium)) { -it } +
+                        fadeIn(tween(AnimationTokens.Medium))) togetherWith
+                        (slideOutVertically(tween(AnimationTokens.Medium)) { it } +
+                            fadeOut(tween(AnimationTokens.Medium)))
+                }
+                // using 必须作用于整个 if-else:跟在同一分支的闭括号后面只会生效于那一支
+                slide.using(SizeTransform(clip = false))
             }
-            // using 必须作用于整个 if-else:跟在同一分支的闭括号后面只会生效于那一支
-            slide.using(SizeTransform(clip = false))
         },
         label = "statCount"
     ) { value ->
