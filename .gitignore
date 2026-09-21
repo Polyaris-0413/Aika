@@ -1,12 +1,8 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+# .idea 是 IDE 的本机配置(内里含 JDK 名称、设备选择等),单人开发整体忽略最省事
+/.idea/
 .DS_Store
 /build
 /captures
