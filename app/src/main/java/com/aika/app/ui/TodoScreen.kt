@@ -29,9 +29,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -148,6 +148,9 @@ fun TodoScreen(contentPadding: PaddingValues) {
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
+                // end=4dp 取自 M3 Top App Bar 规范(容器 padding: 0 4px):
+                // 该值与 Icon Button 的视觉变体无关(standard/filled/tonal/outlined 共用),
+                // 所以换按钮样式时这个值不该跟着变
                 .padding(start = 16.dp, end = 4.dp, bottom = groupTitleSpacing),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -174,8 +177,8 @@ fun TodoScreen(contentPadding: PaddingValues) {
                     AnimatedCounter(count = doneTasks.size)
                 }
             }
-            // 描边图标按钮:图标被一圈 outline 包住(M3 原生组件,自带状态色)
-            OutlinedIconButton(onClick = { showAddSheet = true }) {
+            // 填色图标按钮:圆底包住图标(M3 原生组件,自带按下/聚焦状态色)
+            FilledTonalIconButton(onClick = { showAddSheet = true }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_add),
                     contentDescription = stringResource(R.string.action_add_task)
