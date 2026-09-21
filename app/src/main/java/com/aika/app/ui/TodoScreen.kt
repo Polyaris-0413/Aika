@@ -110,7 +110,10 @@ fun TodoScreen(contentPadding: PaddingValues) {
     // 「已完成」标题的入场:只在"已完成区从空变非空"的那次数据变化后播一次,
     // 标题被滚动回收重建时不重播(标志在下一次数据变化时被重新赋为 false)
     var headerJustAppeared by remember { mutableStateOf(false) }
-    var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
+    // null 表示"数据还没读到":必须与"读到空列表"区分开。
+    // 两者混用会让首帧的占位被当成真的没有待办 —— 冷启动与切页重建
+    // (TodoScreen 离开组合、remember 全丢)时都会先闪一下空状态、统计也从 0 滚到真值
+    var tasks by remember { mutableStateOf<List<Task>?>(null) }
     LaunchedEffect(Unit) {
         var firstEmission = true
         var prevDoneEmpty = true
@@ -130,8 +133,8 @@ fun TodoScreen(contentPadding: PaddingValues) {
     // 旋转等配置变更会重建 Activity,remember 状态丢失;可恢复的 UI 状态一律 rememberSaveable
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
 
-    val pendingTasks = tasks.filter { !it.completed }
-    val doneTasks = tasks.filter { it.completed }
+    val pendingTasks = tasks?.filter { !it.completed }.orEmpty()
+    val doneTasks = tasks?.filter { it.completed }.orEmpty()
     // 标题以 null 占位插入交界处,三个 items 块并成单一块:
     // 任务跨区移动才能被识别为同块内 key 移动(组合复用,涟漪与滑动动画连续),
     // 否则组合销毁重建,涟漪状态随旧组合销毁而中断
@@ -167,13 +170,13 @@ fun TodoScreen(contentPadding: PaddingValues) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    AnimatedCounter(count = pendingTasks.size)
+                    AnimatedCounter(count = tasks?.count { !it.completed })
                     Text(
                         text = " · $completedLabel ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    AnimatedCounter(count = doneTasks.size)
+                    AnimatedCounter(count = tasks?.count { it.completed })
                 }
             }
             // 填色图标按钮:圆底包住图标(M3 原生组件,自带按下/聚焦状态色)
@@ -196,9 +199,9 @@ fun TodoScreen(contentPadding: PaddingValues) {
                 .padding(bottom = contentPadding.calculateBottomPadding())
         ) {
             AnimatedContent(
-                targetState = tasks.isEmpty(),
+                targetState = tasks?.isEmpty(),
                 transitionSpec = {
-                    if (targetState) {
+                    if (targetState == true) {
                         // 删空恢复:维持瞬时切换;占位出现淡入在深色下有黑闪感(同下方 animateItem 注释)
                         EnterTransition.None togetherWith ExitTransition.None
                     } else {
@@ -208,44 +211,11 @@ fun TodoScreen(contentPadding: PaddingValues) {
                 },
                 label = "emptyState"
             ) { isEmpty ->
-                if (isEmpty) {
-                    // 空状态:居中占位(图标圆底 + 标题 + 引导语)
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        CircleShape,
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_checklist),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(40.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                            Text(
-                                text = stringResource(R.string.empty_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(top = 16.dp),
-                            )
-                            Text(
-                                text = stringResource(R.string.empty_hint),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
+                when (isEmpty) {
+                    // 数据未到:什么都不渲染。把 null 当成空会让冷启动先闪一下"还没有待办"
+                    null -> Unit
+                    true -> EmptyPlaceholder()
+                    false -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             start = 8.dp,
@@ -326,13 +296,22 @@ fun TodoScreen(contentPadding: PaddingValues) {
     }
 }
 
-/** 顶栏统计数字:变化时新旧数字按增减方向垂直滚动交接(增加上滚、减少下滚) */
+/**
+ * 顶栏统计数字:变化时新旧数字按增减方向垂直滚动交接(增加上滚、减少下滚)。
+ * count 为 null 表示数据还没读到:此时不播过渡、只拿透明的 0 占住宽度 ——
+ * 否则切页重建时会从 0 滚到真值,看起来像数量真的变了
+ */
 @Composable
-private fun AnimatedCounter(count: Int) {
+private fun AnimatedCounter(count: Int?) {
     AnimatedContent(
         targetState = count,
         transitionSpec = {
-            if (targetState > initialState) {
+            val from = initialState
+            val to = targetState
+            val slide = if (from == null || to == null) {
+                // 数据落位,不是数量变化
+                EnterTransition.None togetherWith ExitTransition.None
+            } else if (to > from) {
                 (slideInVertically(tween(AnimationTokens.Medium)) { it } +
                     fadeIn(tween(AnimationTokens.Medium))) togetherWith
                     (slideOutVertically(tween(AnimationTokens.Medium)) { -it } +
@@ -342,15 +321,59 @@ private fun AnimatedCounter(count: Int) {
                     fadeIn(tween(AnimationTokens.Medium))) togetherWith
                     (slideOutVertically(tween(AnimationTokens.Medium)) { it } +
                         fadeOut(tween(AnimationTokens.Medium)))
-            }.using(SizeTransform(clip = false))
+            }
+            // using 必须作用于整个 if-else:跟在同一分支的闭括号后面只会生效于那一支
+            slide.using(SizeTransform(clip = false))
         },
         label = "statCount"
     ) { value ->
         Text(
-            text = value.toString(),
+            // 未读到数据时用 0 撑住宽度并设为透明,免得数字行在数据到达前后左右跳动
+            text = (value ?: 0).toString(),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                alpha = if (value == null) 0f else 1f,
+            ),
         )
+    }
+}
+
+/** 空状态占位:图标圆底 + 标题 + 引导语 */
+@Composable
+private fun EmptyPlaceholder() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_checklist),
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Text(
+                text = stringResource(R.string.empty_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+            Text(
+                text = stringResource(R.string.empty_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
 
