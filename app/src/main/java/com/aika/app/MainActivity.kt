@@ -286,8 +286,9 @@ fun TodoScreen() {
                         modifier = Modifier
                             .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
                             .animateItem(
-                                // 同任务行:出现淡入在深色下有黑闪感,禁用;消失淡出保留(正常)
-                                fadeInSpec = null,
+                                // 标题是亮色文字,与"卡片底≈面板色"不同,淡入对比明显(当年禁用它
+                                // 是为规避整卡淡入的黑闪,现卡片已改为缩放进出);消失淡出保留
+                                fadeInSpec = tween(AnimationTokens.Large),
                                 placementSpec = tween(AnimationTokens.Medium),
                                 fadeOutSpec = tween(AnimationTokens.Medium)
                             )
