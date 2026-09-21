@@ -41,8 +41,7 @@ object AnimationTokens {
      * 入场缩放允许透出的过冲上限。expressive 的 spring 到位前会冲过目标值,
      * 若这里夹到 1,回弹会被抹掉、缩放准确地停在 1.0(等于白用 spring)。
      *
-     * 0.2 同样是调出来的观感取值,非规范值(查到的 M3 21% 是事后核对,不当依据用);
-     * 只要大于 spring 的实际过冲(当前阻尼比 0.65 对应约 7%)就不会夹断。
+     * 0.2 为项目自定值(非官方),只需大于 spring 的实际过冲(当前阻尼比 0.65 约 7%)。
      */
     const val AppearOvershoot = 0.2f
 
@@ -60,12 +59,14 @@ object AnimationTokens {
      * M3 Expressive 把动画按域拆开:位置/尺寸/缩放走 spring(可以过冲、再收住),
      * 透明度/颜色走 tween(可预测、不过冲)。这里只给缩放用,淡入仍由 [appearFade] 按 tween 语义派生。
      *
-     * 不用 MaterialTheme.motionScheme 的 defaultSpatialSpec():当前 material3 版本里
-     * MotionScheme 还是 internal,拿不到,所以无法从官方取值。
-     * 下面两个参数是照实际观感调出来的,没有规范出处:
-     * dampingRatio 决定过冲量(理论过冲 ≈ exp(-πζ/√(1-ζ²)),0.65 约 7%),
-     * Compose 只给 0.2/0.5/0.75/1.0 四个命名档,0.65 是在档位之间取的值;
-     * stiffness 的 MediumLow(400) 也只表示"中等偏慢"。
+     * 关于取值:Material 官方只在 MDC 侧公开了 spring 数值(motionSpring* 六组,
+     * 见 material-components-android/docs/theming/Motion.md),其 damping 一律 0.9 ——
+     * 对应过冲仅约 0.15%,基本不回弹。本项目要的是有感的回弹(深色下纯淡入/纯缩放
+     * 显得板),所以有意偏离官方:阻尼取 0.65(过冲约 7%)。
+     *
+     * Compose 侧的官方值拿不到 —— 当前 material3 版本里 MotionScheme 仍是 internal。
+     * stiffness 取 MediumLow(400):官方 defaultSpatial 为 700、slowSpatial 为 300,
+     * 列表项介于"小组件"与"全屏"之间,这里取偏慢一侧。
      */
     fun appearSpring(): FiniteAnimationSpec<Float> = spring(
         dampingRatio = 0.65f,
