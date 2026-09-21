@@ -33,4 +33,10 @@ object AnimationTokens {
     /** 入场进度 → 缩放进度:与 [appearFade] 互补的后半段,此时元素已完全可见 */
     fun appearGrow(progress: Float): Float =
         ((progress - AppearFadeFraction) / (1f - AppearFadeFraction)).coerceIn(0f, 1f)
+
+    /**
+     * 退场进行到该比例即提交数据:余下的尾程与入场动画重叠。
+     * 若等退场全部播完再提交(比例为 1),观感会变成"旧项彻底消失后新内容才开始",两项动画脱节。
+     */
+    const val ExitCommitFraction = 0.6f
 }
