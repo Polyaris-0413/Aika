@@ -18,11 +18,13 @@ object AnimationTokens {
 
     /**
      * 进出场缩放端点(比例):新增项自该比例放大到 1,被点击项缩小到该比例后消失。
+     * 越接近 1 变化幅度越小。
+     *
      * 缩放是眼睛最敏感的进出信号(深色下卡片色与面板色亮度差仅约 4%,纯淡入几乎不可感知),
      * 且缩放是原地动画、不依赖目标位置,因此可以先播完退场动画再提交数据,
      * 让 LazyColumn 的滚动锚点不跟随移走的项跳动。
      */
-    const val ScaleEndpoint = 0.9f
+    const val ScaleEndpoint = 0.95f
 
     /**
      * 入场阶段划分:前该比例只做淡入,剩余比例只做缩放。
@@ -57,13 +59,12 @@ object AnimationTokens {
      *
      * 不用 MaterialTheme.motionScheme 的 defaultSpatialSpec():当前 material3 版本里
      * MotionScheme 还是 internal,拿不到。改为直接给参数 ——
-     * DampingRatioMediumBouncy(0.5)+ StiffnessMediumLow(中偏慢)。
-     * 阻尼比决定过冲量:理论过冲 ≈ exp(-πζ/√(1-ζ²)),ζ=0.5 时约 16%,
-     * 低于 [AppearOvershoot](0.2),因此回弹不会被 clamp 削掉;
-     * 上一版用的 LowBouncy(0.75)过冲只有约 2.8%,几乎看不出来。
+     * 阻尼比决定过冲量:理论过冲 ≈ exp(-πζ/√(1-ζ²))。
+     * Compose 只提供 0.2 / 0.5 / 0.75 / 1.0 四个命名档,这里取中间的 0.65(过冲约 7%),
+     * 对应"有回弹但不抢戏"的位置。
      */
     fun appearSpring(): FiniteAnimationSpec<Float> = spring(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
+        dampingRatio = 0.65f,
         stiffness = Spring.StiffnessMediumLow,
     )
 
