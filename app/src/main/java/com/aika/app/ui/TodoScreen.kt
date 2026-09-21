@@ -398,8 +398,11 @@ private fun TaskRow(
     // 入场:新增项自 0.9 放大到 1 并淡入。
     // remember 在跨区移动的组合复用下保留,移动时不重播
     val appear = remember { Animatable(if (playAppear) 0f else 1f) }
+    // 入场用 spring(带回弹):匀速/减速停住会显得拖,过冲一下才显得"至"。
+    // 退场仍用固定时长 tween —— M3 规范里 spring 用于组件动画,进/退场转场走 easing/duration
+    val appearSpec = AnimationTokens.appearSpring()
     LaunchedEffect(Unit) {
-        if (playAppear) appear.animateTo(1f, tween(AnimationTokens.Large))
+        if (playAppear) appear.animateTo(1f, appearSpec)
     }
 
     // 退场:点击后原地缩小并淡出,播完由调用方提交数据(TaskRow 会被 LazyColumn 回收,不能靠它提交)

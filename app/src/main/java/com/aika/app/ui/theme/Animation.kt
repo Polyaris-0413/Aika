@@ -1,5 +1,9 @@
 package com.aika.app.ui.theme
 
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+
 /**
  * 全局动画数值(时长 + 缓动),分档管理,与 Folio 的 AnimationTokens 同源:
  * 同类动作用同一档;新增动画先查档位复用,没有合适档位才新增,避免数值散落。
@@ -30,9 +34,35 @@ object AnimationTokens {
     fun appearFade(progress: Float): Float =
         (progress / AppearFadeFraction).coerceAtMost(1f)
 
-    /** 入场进度 → 缩放进度:与 [appearFade] 互补的后半段,此时元素已完全可见 */
+    /**
+     * 入场缩放允许透出的过冲上限。expressive 的 spring 到位前会冲过目标值,
+     * 若这里夹到 1,回弹会被抹掉、缩放准确地停在 1.0(等于白用 spring)。
+     */
+    const val AppearOvershoot = 0.2f
+
+    /**
+     * 入场进度 → 缩放进度:与 [appearFade] 互补的后半段,此时元素已完全可见。
+     * 上限为 1 + [AppearOvershoot],让 spring 的过冲能反映到缩放上。
+     */
     fun appearGrow(progress: Float): Float =
-        ((progress - AppearFadeFraction) / (1f - AppearFadeFraction)).coerceIn(0f, 1f)
+        ((progress - AppearFadeFraction) / (1f - AppearFadeFraction))
+            .coerceIn(0f, 1f + AppearOvershoot)
+
+    /**
+     * 列表项入场的弹性规格。
+     *
+     * M3 Expressive 把动画按域拆开:位置/尺寸/缩放走 spring(可以过冲、再收住),
+     * 透明度/颜色走 tween(可预测、不过冲)。这里只给缩放用,淡入仍由 [appearFade] 按 tween 语义派生。
+     *
+     * 不用 MaterialTheme.motionScheme 的 defaultSpatialSpec():当前 material3 版本里
+     * MotionScheme 还是 internal,拿不到。改为直接给参数 ——
+     * DampingRatioLowBouncy(轻微回弹)+ StiffnessMediumLow(中偏慢),
+     * 对应 M3 expressive spatial 的观感(其曲线控制点过冲约 21%,与 [AppearOvershoot] 相当)。
+     */
+    fun appearSpring(): FiniteAnimationSpec<Float> = spring(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
 
     /**
      * 「已完成」标题入场的上滑距离(dp):标题是纯文字,不适合用缩放做进入
