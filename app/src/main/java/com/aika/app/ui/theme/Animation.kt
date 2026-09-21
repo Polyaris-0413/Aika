@@ -74,7 +74,7 @@ object AnimationTokens {
     /**
      * 入场缩放允许透出的过冲上限(项目自定值,M3 无对应 token)。
      * spring 到位前会冲过目标值,若这里夹到 1,回弹会被抹掉、缩放准确地停在 1.0。
-     * 当前 spatial spring 的阻尼比为官方值 0.9(过冲仅约 0.15%),实际用不到这个上限。
+     * 当前 dampingRatio 为 0.65(过冲约 7%),本上限(20%)足够放宽而不夹断。
      */
     const val AppearOvershoot = 0.2f
 
@@ -88,15 +88,19 @@ object AnimationTokens {
 
     /**
      * spatial spring:用于位置、尺寸、形状等"在屏幕上动"的属性。
-     * 数值取官方 motionSpringDefaultSpatial(damping 0.9 / stiffness 700)——
+     * stiffness 取官方 motionSpringDefaultSpatial 的 700 ——
      * MDC 原文:"小件用 fast spring,全屏用 slow spring,介于两者之间的用 default",
      * 列表项正属此类。
+     *
+     * dampingRatio 有意偏离官方:官方 spatial 一律 0.9(过冲仅约 0.15%,基本不回弹),
+     * 而本项目的列表项需要可感的回弹,故取 0.65(过冲约 7%)。
+     * 这是全局唯一一处主动偏离官方 motion token 的取值。
      *
      * 官方的 effects spring(damping 1)不在此实现:透明度与颜色在本项目走 tween,
      * 官方也正是这么配的(Effects springs 用于"不应过冲"的属性,如 alpha)。
      */
     fun <T> spatialSpring(): FiniteAnimationSpec<T> = spring(
-        dampingRatio = 0.9f,
+        dampingRatio = 0.65f,
         stiffness = 700f,
     )
 
