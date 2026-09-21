@@ -57,11 +57,13 @@ object AnimationTokens {
      *
      * 不用 MaterialTheme.motionScheme 的 defaultSpatialSpec():当前 material3 版本里
      * MotionScheme 还是 internal,拿不到。改为直接给参数 ——
-     * DampingRatioLowBouncy(轻微回弹)+ StiffnessMediumLow(中偏慢),
-     * 对应 M3 expressive spatial 的观感(其曲线控制点过冲约 21%,与 [AppearOvershoot] 相当)。
+     * DampingRatioMediumBouncy(0.5)+ StiffnessMediumLow(中偏慢)。
+     * 阻尼比决定过冲量:理论过冲 ≈ exp(-πζ/√(1-ζ²)),ζ=0.5 时约 16%,
+     * 低于 [AppearOvershoot](0.2),因此回弹不会被 clamp 削掉;
+     * 上一版用的 LowBouncy(0.75)过冲只有约 2.8%,几乎看不出来。
      */
     fun appearSpring(): FiniteAnimationSpec<Float> = spring(
-        dampingRatio = Spring.DampingRatioLowBouncy,
+        dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessMediumLow,
     )
 
