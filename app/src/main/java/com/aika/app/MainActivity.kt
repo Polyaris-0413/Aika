@@ -59,7 +59,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -307,7 +306,6 @@ fun TodoScreen() {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .graphicsLayer {
-                                compositingStrategy = CompositingStrategy.ModulateAlpha
                                 alpha = AnimationTokens.appearFade(appear.value)
                                 translationY = (1f - appear.value) * titleRise
                             }
@@ -419,10 +417,6 @@ private fun TaskRow(
         colors = listItemColors(),
         modifier = modifier
             .graphicsLayer {
-                // alpha 与 scale 同时在变时,默认的 Auto 策略会为此建离屏图层,
-                // 动画期间该图层会出现未初始化的帧,深色下就表现为这张卡片轮廓闪黑。
-                // ModulateAlpha 把 alpha 直接调制到绘制命令上,不建离屏图层
-                compositingStrategy = CompositingStrategy.ModulateAlpha
                 // 进场分两段:先淡入到位、再放大(同步时看不出放大,见 AppearFadeFraction 注释);
                 // 退场则与原尺寸一起缩小并淡出
                 val appearGrow = AnimationTokens.appearGrow(appear.value)
