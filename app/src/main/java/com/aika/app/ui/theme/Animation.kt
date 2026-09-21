@@ -1,7 +1,6 @@
 package com.aika.app.ui.theme
 
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 
 /**
@@ -65,12 +64,13 @@ object AnimationTokens {
      * 显得板),所以有意偏离官方:阻尼取 0.65(过冲约 7%)。
      *
      * Compose 侧的官方值拿不到 —— 当前 material3 版本里 MotionScheme 仍是 internal。
-     * stiffness 取 MediumLow(400):官方 defaultSpatial 为 700、slowSpatial 为 300,
-     * 列表项介于"小组件"与"全屏"之间,这里取偏慢一侧。
+     * stiffness 决定到达目标的速度(不影响回弹幅度),取 700 ——
+     * 即官方 motionSpringDefaultSpatial 的值。MDC 原文:介于"小组件"与"全屏"
+     * 之间的用 default,列表项正属此类。Compose 没有 700 这个命名档,故直接给数值。
      */
     fun appearSpring(): FiniteAnimationSpec<Float> = spring(
         dampingRatio = 0.65f,
-        stiffness = Spring.StiffnessMediumLow,
+        stiffness = 700f,
     )
 
     /**
