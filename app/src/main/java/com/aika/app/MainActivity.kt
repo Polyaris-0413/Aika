@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -289,36 +290,32 @@ fun TodoScreen() {
                     },
                 ) { index, item ->
                 if (item == null) {
-                    // 「已完成」标题:与卡片同一动画语言(前段先淡入到位、后段放大),
-                    // 只在首次出现时播放;消失由 animateItem 的 fadeOut 负责
+                    // 「已完成」标题:出现时自下方滑入并淡入,只在首次出现时播放。
+                    // 不用缩放:缩放要占满整行才看得见,而整行大的项参与 LazyColumn 的图层动画
+                    // 会把深色下的暗闪放大到整个宽度
                     val appear = remember { Animatable(if (headerJustAppeared) 0f else 1f) }
                     LaunchedEffect(Unit) {
                         if (headerJustAppeared) {
                             appear.animateTo(1f, tween(AnimationTokens.Large))
                         }
                     }
+                    val titleRise = with(LocalDensity.current) { AnimationTokens.TitleRiseDp.dp.toPx() }
                     Text(
                         text = stringResource(R.string.group_completed),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            // 占满整行:缩放中心才是列表中心。否则项只有文字那么宽,
-                            // 缩放中心就在文字中间,10% 的缩放只让文字边缘动约 8px,看不出放大
-                            .fillMaxWidth()
                             .graphicsLayer {
-                                val grow = AnimationTokens.appearGrow(appear.value)
-                                val scale = AnimationTokens.ScaleEndpoint +
-                                    (1f - AnimationTokens.ScaleEndpoint) * grow
-                                scaleX = scale
-                                scaleY = scale
                                 alpha = AnimationTokens.appearFade(appear.value)
+                                translationY = (1f - appear.value) * titleRise
                             }
                             .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
                             .animateItem(
-                                // 出现动画自管(与卡片同:先淡入后放大),此处 fadeIn 必须为 null;消失淡出保留
+                                // 出现动画自管(滑入+淡入),此处 fadeIn 必须为 null;
+                                // 消失淡出用 Large 与淡入一致,免得退得比进得还急
                                 fadeInSpec = null,
                                 placementSpec = tween(AnimationTokens.Medium),
-                                fadeOutSpec = tween(AnimationTokens.Medium)
+                                fadeOutSpec = tween(AnimationTokens.Large)
                             )
                     )
                 } else {

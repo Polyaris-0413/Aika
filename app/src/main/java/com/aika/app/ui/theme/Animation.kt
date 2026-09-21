@@ -39,4 +39,11 @@ object AnimationTokens {
      * 若等退场全部播完再提交(比例为 1),观感会变成"旧项彻底消失后新内容才开始",两项动画脱节。
      */
     const val ExitCommitFraction = 0.6f
+
+    /**
+     * 「已完成」标题入场的上滑距离(dp):标题是纯文字,不适合用缩放做进入
+     * (缩放要项占满整行才看得见,而整行大的项参与 LazyColumn 的图层动画
+     * 会放大深色下的暗闪),故改用位移给进入感。
+     */
+    const val TitleRiseDp = 8
 }
