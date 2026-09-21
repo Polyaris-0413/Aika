@@ -111,14 +111,20 @@ fun TodoScreen() {
     val context = LocalContext.current
     val repository = remember { TaskRepository(context) }
     val scope = rememberCoroutineScope()
-    // 首屏(Room 首次发射已有数据)直出,不播放入场;此后新增的项才滑入
+    // 已登记过出现的任务 id:首屏连屏幕外的溢出项一起先全部登记,
+    // 因此冷启动与"滚动露出溢出项"都不播放入场;只有真正新增(新 id)的项才播放。
+    // 不能用"是否已过首屏"的全局开关:LazyColumn 只组合可视项,溢出项在数据变化后
+    // 首次滚入视口也会重新组合,会被全局开关误判为新增而重播动画
+    val seenTaskIds = remember { mutableSetOf<Long>() }
     var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
-    var animateAppear by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         var firstEmission = true
         repository.tasks.collect { list ->
+            if (firstEmission) {
+                seenTaskIds.addAll(list.map { it.id })
+                firstEmission = false
+            }
             tasks = list
-            if (firstEmission) firstEmission = false else animateAppear = true
         }
     }
     // 旋转等配置变更会重建 Activity,remember 状态丢失;可恢复的 UI 状态一律 rememberSaveable
@@ -262,7 +268,8 @@ fun TodoScreen() {
                         task = item,
                         positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
                         groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
-                        animateAppear = animateAppear,
+                        // 每个 id 只在首次组合时登记一次:已在集合内的(含滚动露出的溢出项)不播放入场
+                        playAppear = seenTaskIds.add(item.id),
                         modifier = Modifier.animateItem(
                             // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
                             fadeInSpec = null,
@@ -321,16 +328,16 @@ private fun TaskRow(
     task: Task,
     positionInGroup: Int,
     groupCount: Int,
-    animateAppear: Boolean,
+    playAppear: Boolean,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit
 ) {
     // 入场:新增项自下方滑入并淡入(深色下面板色≈黑,单纯淡入会被感知为黑闪,位移给出进入方向)。
-    // 首屏已有数据直出;remember 在跨区移动的组合复用下保留,移动时不重播
-    val appear = remember { Animatable(if (animateAppear) 0f else 1f) }
+    // remember 在跨区移动的组合复用下保留,移动时不重播
+    val appear = remember { Animatable(if (playAppear) 0f else 1f) }
     val riseDistance = with(LocalDensity.current) { AnimationTokens.AppearRiseDp.dp.toPx() }
     LaunchedEffect(Unit) {
-        if (animateAppear) appear.animateTo(1f, tween(AnimationTokens.Large))
+        if (playAppear) appear.animateTo(1f, tween(AnimationTokens.Large))
     }
 
     ListItem(
