@@ -7,10 +7,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TaskDao {
-    /** 未完成区在前按 pendingAt(恢复的项沉到区尾),已完成区在后按 completedAt,与分区显示一致 */
+    /**
+     * 未完成区在前按 pendingAt(恢复的项沉到区尾),已完成区在后按 completedAt 倒序:
+     * 最近完成的紧邻待办区,跨区移动的入场动画才可能落在视口内。
+     * 倒序用取负实现,避免再拆一列 CASE
+     */
     @Query(
         "SELECT * FROM tasks ORDER BY completed ASC, " +
-            "CASE WHEN completed = 1 THEN completedAt ELSE pendingAt END ASC",
+            "CASE WHEN completed = 1 THEN -completedAt ELSE pendingAt END ASC",
     )
     fun observeAll(): Flow<List<Task>>
 

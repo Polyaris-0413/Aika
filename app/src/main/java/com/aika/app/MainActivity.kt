@@ -134,12 +134,16 @@ fun TodoScreen() {
     // 不能用"是否已过首屏"的全局开关:LazyColumn 只组合可视项,溢出项在数据变化后
     // 首次滚入视口也会重新组合,会被全局开关误判为新增而重播动画
     val seenTaskIds = remember { mutableSetOf<Long>() }
+    // 各任务上次所在分区:跨区移动要在新位置播放入场,
+    // 而 put 返回旧值,只有分区真的变了才是 true —— 溢出项滚入视口、滚动回收重建都不会重播
+    val taskRegions = remember { mutableMapOf<Long, Boolean>() }
     var tasks by remember { mutableStateOf<List<Task>>(emptyList()) }
     LaunchedEffect(Unit) {
         var firstEmission = true
         repository.tasks.collect { list ->
             if (firstEmission) {
                 seenTaskIds.addAll(list.map { it.id })
+                list.forEach { taskRegions[it.id] = it.completed }
                 firstEmission = false
             }
             tasks = list
@@ -294,7 +298,8 @@ fun TodoScreen() {
                         positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
                         groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
                         // 每个 id 只在首次组合时登记一次:已在集合内的(含滚动露出的溢出项)不播放入场
-                        playAppear = seenTaskIds.add(item.id),
+                        playAppear = seenTaskIds.add(item.id) ||
+                            taskRegions.put(item.id, item.completed) != item.completed,
                         exiting = item.id in exitingTaskIds,
                         modifier = Modifier.animateItem(
                             // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
