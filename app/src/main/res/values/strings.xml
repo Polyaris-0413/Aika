@@ -10,4 +10,8 @@
     <string name="empty_title">还没有待办</string>
     <string name="empty_hint">点击右下角按钮添加第一条任务</string>
     <string name="group_completed">已完成</string>
+
+    <string name="tab_tasks">待办</string>
+    <string name="tab_settings">设置</string>
+    <string name="settings_placeholder">功能开发中</string>
 </resources>
