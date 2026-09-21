@@ -219,10 +219,16 @@ fun TodoScreen() {
         // 面板始终显示(空态时承载居中占位),层级结构与有任务时保持一致
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            shape = RoundedCornerShape(20.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
+                // 底部也留一圈底色:屏幕自己的 R 角才不会和面板/卡片的圆角打架。
+                // 导航栏避让在这里统一处理,列表就不必再算
+                .padding(
+                    bottom = 16.dp +
+                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                )
         ) {
             AnimatedContent(
                 targetState = tasks.isEmpty(),
@@ -277,7 +283,7 @@ fun TodoScreen() {
                     start = 8.dp,
                     end = 8.dp,
                     top = 8.dp,
-                    bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    bottom = 16.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(groupItemSpacing)
             ) {
