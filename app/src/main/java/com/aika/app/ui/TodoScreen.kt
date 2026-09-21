@@ -30,8 +30,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -174,7 +174,8 @@ fun TodoScreen(contentPadding: PaddingValues) {
                     AnimatedCounter(count = doneTasks.size)
                 }
             }
-            IconButton(onClick = { showAddSheet = true }) {
+            // 描边图标按钮:图标被一圈 outline 包住(M3 原生组件,自带状态色)
+            OutlinedIconButton(onClick = { showAddSheet = true }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_add),
                     contentDescription = stringResource(R.string.action_add_task)
