@@ -40,6 +40,9 @@ object AnimationTokens {
     /**
      * 入场缩放允许透出的过冲上限。expressive 的 spring 到位前会冲过目标值,
      * 若这里夹到 1,回弹会被抹掉、缩放准确地停在 1.0(等于白用 spring)。
+     *
+     * 0.2 同样是调出来的观感取值,非规范值(查到的 M3 21% 是事后核对,不当依据用);
+     * 只要大于 spring 的实际过冲(当前阻尼比 0.65 对应约 7%)就不会夹断。
      */
     const val AppearOvershoot = 0.2f
 
@@ -58,10 +61,11 @@ object AnimationTokens {
      * 透明度/颜色走 tween(可预测、不过冲)。这里只给缩放用,淡入仍由 [appearFade] 按 tween 语义派生。
      *
      * 不用 MaterialTheme.motionScheme 的 defaultSpatialSpec():当前 material3 版本里
-     * MotionScheme 还是 internal,拿不到。改为直接给参数 ——
-     * 阻尼比决定过冲量:理论过冲 ≈ exp(-πζ/√(1-ζ²))。
-     * Compose 只提供 0.2 / 0.5 / 0.75 / 1.0 四个命名档,这里取中间的 0.65(过冲约 7%),
-     * 对应"有回弹但不抢戏"的位置。
+     * MotionScheme 还是 internal,拿不到,所以无法从官方取值。
+     * 下面两个参数是照实际观感调出来的,没有规范出处:
+     * dampingRatio 决定过冲量(理论过冲 ≈ exp(-πζ/√(1-ζ²)),0.65 约 7%),
+     * Compose 只给 0.2/0.5/0.75/1.0 四个命名档,0.65 是在档位之间取的值;
+     * stiffness 的 MediumLow(400) 也只表示"中等偏慢"。
      */
     fun appearSpring(): FiniteAnimationSpec<Float> = spring(
         dampingRatio = 0.65f,
