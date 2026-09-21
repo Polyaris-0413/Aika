@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色下换用非 Light 的平台主题:否则 windowBackground 仍是浅色,
+         冷启动首帧会在深色用户眼前闪一下白(Compose 主题此时还没生效) -->
+    <style name="Theme.Aika" parent="android:Theme.Material.NoActionBar" />
+</resources>

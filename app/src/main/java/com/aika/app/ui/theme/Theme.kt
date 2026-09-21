@@ -18,8 +18,9 @@ fun AikaTheme(
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
+        // typography 用 M3 默认值:原先那份 Type.kt 只覆盖了 bodyLarge,
+        // 而覆盖值与 M3 默认完全相同(16sp/24sp/0.5sp),等于没改
         colorScheme = if (darkTheme) darkColorScheme() else lightColorScheme(),
-        typography = Typography,
         content = content,
     )
 }

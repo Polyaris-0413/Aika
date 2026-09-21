@@ -12,18 +12,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -37,8 +37,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -71,7 +71,6 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
 /** 已完成标题在 displayItems 中的占位 key(与任务 Long id 区分) */
 private const val CompletedHeaderKey = "completed-header"
 
@@ -210,107 +209,112 @@ fun TodoScreen(contentPadding: PaddingValues) {
                 label = "emptyState"
             ) { isEmpty ->
                 if (isEmpty) {
-                // 空状态:居中占位(图标圆底 + 标题 + 引导语)
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // 空状态:居中占位(图标圆底 + 标题 + 引导语)
                     Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_checklist),
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.empty_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.empty_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-            } else {
-                LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 8.dp,
-                    end = 8.dp,
-                    top = 8.dp,
-                    bottom = 16.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(groupItemSpacing)
-            ) {
-                itemsIndexed(
-                    displayItems,
-                    // key 带状态前缀:跨区移动后 LazyColumn 的滚动锚点(原第一项 key)在新列表里找不到,
-                    // 便不会跟随移走的项跳到新位置;跨区移动的视觉交给 TaskRow 的退场/入场动画
-                    key = { _, item ->
-                        item?.let { "${it.id}-${if (it.completed) "d" else "p"}" } ?: CompletedHeaderKey
-                    },
-                ) { index, item ->
-                if (item == null) {
-                    // 「已完成」标题:出现时自下方滑入并淡入,只在首次出现时播放。
-                    // 不用缩放:缩放要占满整行才看得见,而整行大的项参与 LazyColumn 的图层动画
-                    // 会把深色下的暗闪放大到整个宽度
-                    val appear = remember { Animatable(if (headerJustAppeared) 0f else 1f) }
-                    LaunchedEffect(Unit) {
-                        if (headerJustAppeared) {
-                            appear.animateTo(1f, tween(AnimationTokens.Large))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        CircleShape,
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_checklist),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                            Text(
+                                text = stringResource(R.string.empty_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(top = 16.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.empty_hint),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
                         }
                     }
-                    val titleRise = with(LocalDensity.current) { AnimationTokens.TitleRiseDp.dp.toPx() }
-                    Text(
-                        text = stringResource(R.string.group_completed),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .graphicsLayer {
-                                alpha = AnimationTokens.appearFade(appear.value)
-                                translationY = (1f - appear.value) * titleRise
-                            }
-                            .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
-                            .animateItem(
-                                // 出现动画自管(滑入+淡入),此处 fadeIn 必须为 null;
-                                // 消失淡出用 Large 与淡入一致,免得退得比进得还急
-                                fadeInSpec = null,
-                                placementSpec = tween(AnimationTokens.Medium),
-                                fadeOutSpec = tween(AnimationTokens.Large)
-                            )
-                    )
                 } else {
-                    TaskRow(
-                        task = item,
-                        positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
-                        groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
-                        // 每个 id 只在首次组合时登记一次:已在集合内的(含滚动露出的溢出项)不播放入场
-                        playAppear = seenTaskIds.add(item.id) ||
-                            taskRegions.put(item.id, item.completed) != item.completed,
-                        exiting = item.id in exitingTaskIds,
-                        modifier = Modifier.animateItem(
-                            // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
-                            fadeInSpec = null,
-                            placementSpec = tween(AnimationTokens.Medium)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 8.dp,
+                            end = 8.dp,
+                            top = 8.dp,
+                            bottom = 16.dp,
                         ),
-                        onToggle = { toggleTask(item) }
-                    )
+                        verticalArrangement = Arrangement.spacedBy(groupItemSpacing),
+                    ) {
+                        itemsIndexed(
+                            displayItems,
+                            // key 带状态前缀:跨区移动后 LazyColumn 的滚动锚点(原第一项 key)在新列表里找不到,
+                            // 便不会跟随移走的项跳到新位置;跨区移动的视觉交给 TaskRow 的退场/入场动画
+                            key = { _, item ->
+                                item?.let { "${it.id}-${if (it.completed) "d" else "p"}" }
+                                    ?: CompletedHeaderKey
+                            },
+                        ) { index, item ->
+                            if (item == null) {
+                                // 「已完成」标题:出现时自下方滑入并淡入,只在首次出现时播放。
+                                // 不用缩放:缩放要占满整行才看得见,而整行大的项参与 LazyColumn 的图层动画
+                                // 会把深色下的暗闪放大到整个宽度
+                                val appear = remember { Animatable(if (headerJustAppeared) 0f else 1f) }
+                                LaunchedEffect(Unit) {
+                                    if (headerJustAppeared) {
+                                        appear.animateTo(1f, tween(AnimationTokens.Large))
+                                    }
+                                }
+                                val titleRise =
+                                    with(LocalDensity.current) { AnimationTokens.TitleRiseDp.dp.toPx() }
+                                Text(
+                                    text = stringResource(R.string.group_completed),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            alpha = AnimationTokens.appearFade(appear.value)
+                                            translationY = (1f - appear.value) * titleRise
+                                        }
+                                        .padding(start = 16.dp, top = 16.dp, bottom = groupTitleSpacing)
+                                        .animateItem(
+                                            // 出现动画自管(滑入+淡入),此处 fadeIn 必须为 null;
+                                            // 消失淡出用 Large 与淡入一致,免得退得比进得还急
+                                            fadeInSpec = null,
+                                            placementSpec = tween(AnimationTokens.Medium),
+                                            fadeOutSpec = tween(AnimationTokens.Large),
+                                        )
+                                )
+                            } else {
+                                TaskRow(
+                                    task = item,
+                                    positionInGroup = if (item.completed) index - pendingTasks.size - 1 else index,
+                                    groupCount = if (item.completed) doneTasks.size else pendingTasks.size,
+                                    // 每个 id 只在首次组合时登记一次:已在集合内的(含滚动露出的溢出项)不播放入场
+                                    playAppear = seenTaskIds.add(item.id) ||
+                                        taskRegions.put(item.id, item.completed) != item.completed,
+                                    exiting = item.id in exitingTaskIds,
+                                    modifier = Modifier.animateItem(
+                                        // 出现动画由 TaskRow 自管(滑入+淡入),此处 fadeIn 必须为 null,否则双重 alpha
+                                        fadeInSpec = null,
+                                        placementSpec = tween(AnimationTokens.Medium),
+                                    ),
+                                    onToggle = { toggleTask(item) },
+                                )
+                            }
+                        }
+                    }
                 }
             }
-            }
-            }
-        }
         }
     }
 

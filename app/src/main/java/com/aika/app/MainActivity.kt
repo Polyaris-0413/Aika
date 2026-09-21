@@ -50,7 +50,7 @@ private enum class AikaTab { Tasks, Settings }
  * 顶栏不放这里是因为两页的顶栏内容不同(待办页有统计和添加按钮),放在各页里更内聚。
  */
 @Composable
-fun AikaApp() {
+private fun AikaApp() {
     // 旋转等配置变更会重建 Activity,当前分页要留住
     var currentTab by rememberSaveable { mutableStateOf(AikaTab.Tasks) }
     Scaffold(
